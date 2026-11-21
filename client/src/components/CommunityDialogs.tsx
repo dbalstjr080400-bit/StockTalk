@@ -7,6 +7,7 @@ import { Avatar, StockIcon, type Post } from './CommunityParts';
 import { StockPicker } from './StockPicker';
 
 type Draft = { ticker: string; stockName: string; category: string; title: string; content: string; author: string };
+const FREE_BOARD_TAGS = ['분석', '수익인증', '질문', '투자아이디어', '뉴스·이슈', '배당', '단기투자', '장기투자'] as const;
 
 function Modal({ children, onClose, label }: { children: ReactNode; onClose: () => void; label: string }) {
   useEffect(() => {
@@ -23,7 +24,7 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
   const [category, setCategory] = useState(initialCategory);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [author, setAuthor] = useState(nickname);
   // A directory response arriving while the dialog is open replaces only the
   // selected example's metadata, never the user's in-progress search.
@@ -32,11 +33,12 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
     const canonical = stocks.find((item) => item.ticker === stock.ticker);
     if (canonical && canonical !== stock) setStock(canonical);
   }, [stocks, stock]);
+  useEffect(() => { if (category !== '자유게시판') setTags([]); }, [category]);
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!stock || !title.trim() || !content.trim() || !author.trim()) return;
     onNickname(author.trim());
-    const normalizedTags = (tags.match(/#[^\s#]+/g) ?? []).slice(0, 8);
+    const normalizedTags = category === '자유게시판' ? tags.map((tag) => `#${tag}`) : [];
     const taggedContent = normalizedTags.length ? `${content.trim()}\n\n${normalizedTags.join(' ')}` : content.trim();
     onSubmit({ ticker: stock.ticker, stockName: stock.name, category, title: title.trim(), content: taggedContent, author: author.trim() });
   }
@@ -46,7 +48,7 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
       <div className="form-two"><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} /><label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>종목토론</option><option>자유게시판</option></select></label></div>
       <label>닉네임<input required maxLength={20} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="대화에 사용할 닉네임" /></label>
       <label>제목<input required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="어떤 이야기를 나누고 싶나요?" /></label>
-      <label>태그<input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="태그를 입력해 주세요" maxLength={240} /><small className="tag-helper">띄어쓰기로 나누어 최대 8개까지 추가할 수 있어요.</small></label>
+      {category === '자유게시판' && <fieldset className="tag-picker"><legend>태그 <small>선택사항 · 최대 8개</small></legend><div className="tag-option-list">{FREE_BOARD_TAGS.map((tag) => <button type="button" key={tag} className={tags.includes(tag) ? 'selected' : ''} onClick={() => setTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])}>#{tag}</button>)}</div></fieldset>}
       <label>내용<textarea required maxLength={4000} value={content} onChange={(e) => setContent(e.target.value)} placeholder="서로의 생각을 존중하며 이야기를 나눠주세요." rows={7} /></label>
       <div className="form-footer"><span>투자 판단은 스스로, 대화는 따뜻하게.</span><button disabled={pending || !stock} className="primary-button" type="submit">{pending ? '등록 중...' : '이야기 올리기'} <ArrowIcon /></button></div>
     </form>
