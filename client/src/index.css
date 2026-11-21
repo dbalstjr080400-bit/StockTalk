@@ -217,3 +217,5 @@
 .tag-option-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .tag-option-list button{padding:6px 9px;border:1px solid #eadcdf;border-radius:999px;background:#fff;color:#9b777c;font-size:10px;font-weight:700}
 .tag-option-list button.selected{border-color:#d83d4b;background:#fff0f2;color:#c43f4c}
+
+.compose-form .form-two.board-selector-hidden{grid-template-columns:1fr}

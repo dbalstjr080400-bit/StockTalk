@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ArrowUpRight, BarChart3, ExternalLink, MessageCircle, Newspaper, PenLine } from 'lucide-react';
 import { PostCard, StockIcon, type Post } from './CommunityParts';
 import type { Stock } from '@/lib/stocks';
@@ -54,13 +55,18 @@ type IndexSectionProps = {
 
 export function IndexSection({ selected, posts, indexStocks, onSelect, onWrite, onLike, onComments }: IndexSectionProps) {
   const stockForIndex = (index: MarketIndex) => indexStocks.find((stock) => stock.ticker === index.ticker) as Stock;
+  const boardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!selected) return;
+    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [selected?.ticker]);
   return <section className="market-content" aria-label="주요지수 목록">
     <div className="market-source-note"><BarChart3 size={17} /><span>지수 값과 변동률은 지연될 수 있습니다. 각 카드의 공식 시세 페이지에서 최신 값을 확인하세요.</span></div>
     <div className="index-grid">{MARKET_INDICES.map((index) => { const quote = INDEX_QUOTES[index.ticker]; return <article className={`index-card ${selected?.ticker === index.ticker ? 'selected' : ''}`} key={index.ticker}>
       <button className="index-card-main" onClick={() => onSelect(index)}><span className="market-card-kicker">{index.market}</span><strong>{index.name}</strong><span>{index.englishName}</span>{quote && <div className="index-quote"><div><b>{quote.price}</b><em className={quote.positive ? 'up' : 'down'}>{quote.change}</em></div><IndexMiniChart points={quote.points} positive={quote.positive} /></div>}<p>{index.description}</p></button>
       <div className="index-card-actions"><a href={index.sourceUrl} target="_blank" rel="noopener noreferrer">시세 보기 <ArrowUpRight size={13} /></a><button onClick={() => onSelect(index)}><MessageCircle size={13} /> 게시판 열기</button></div>
     </article>; })}</div>
-    {selected && <div className="index-board"><div className="index-board-heading"><div><span className="market-card-kicker">{selected.market}</span><h3>{selected.name} 게시판 <span>{posts.length}</span></h3><p>{selected.name}에 관한 글과 의견을 이 게시판에서 나눠보세요.</p></div><button className="outline-write" onClick={onWrite}><PenLine size={14} /> 글쓰기</button></div>
+    {selected && <div ref={boardRef} className="index-board"><div className="index-board-heading"><div><span className="market-card-kicker">{selected.market}</span><h3>{selected.name} 게시판 <span>{posts.length}</span></h3><p>{selected.name}에 관한 글과 의견을 이 게시판에서 나눠보세요.</p></div><button className="outline-write" onClick={onWrite}><PenLine size={14} /> 글쓰기</button></div>
       {posts.length ? <div className="feed-list">{posts.map((post) => <PostCard key={post.id} post={post} stock={stockForIndex(selected)} onLike={() => onLike(post)} onComments={() => onComments(post)} onStock={() => onSelect(selected)} />)}</div> : <div className="feed-state"><MessageCircle size={24} /><strong>아직 {selected.name} 이야기가 없어요.</strong><span>이 지수의 첫 글을 작성해 보세요.</span><button onClick={onWrite}>글쓰기 <ArrowUpRight size={14} /></button></div>}
     </div>}
   </section>;
