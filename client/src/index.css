@@ -130,3 +130,15 @@
 .popular-period-tabs button{flex:1;padding:6px 3px;border:1px solid #f0dfe1;border-radius:5px;background:#fff;color:#a07a80;font-family:'Noto Sans KR',Arial,sans-serif;font-size:9px;font-weight:700;white-space:nowrap}
 .popular-period-tabs button.active{border-color:#d83d4b;background:#d83d4b;color:#fff}
 .rank-stock-views{color:#d83d4b!important;font-weight:800!important}
+
+/* Main popular-stock ranking page */
+.popular-stocks-page{margin-bottom:18px;padding:20px;border:1px solid #f0d5d8;border-radius:11px;background:#fffafa}
+.popular-page-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding-bottom:15px;border-bottom:1px solid #f3e2e3}
+.popular-page-toolbar h3{margin-top:8px;color:#7d2029;font-size:19px;letter-spacing:-.7px}
+.popular-page-toolbar p{margin-top:6px;color:#a47b80;font-size:10px}
+.popular-page-toolbar .popular-period-tabs{width:245px;margin-top:0;padding-bottom:0;border-bottom:0}
+.popular-main-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:25px}
+.popular-main-row{display:flex;align-items:center;gap:10px;min-width:0;padding:11px 0;border-bottom:1px solid #f5e8e9}
+.popular-main-row .rank-stock{padding:0}
+.popular-main-row .rank-number{color:#b58d92}
+@media(max-width:700px){.popular-page-toolbar{align-items:flex-start;flex-direction:column}.popular-page-toolbar .popular-period-tabs{width:100%}.popular-main-list{grid-template-columns:1fr}.popular-stocks-page{padding:16px}}
