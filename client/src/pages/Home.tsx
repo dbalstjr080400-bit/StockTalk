@@ -25,6 +25,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [watch, setWatch] = useState<string[]>(() => saved('moa-watch', ['005930', '000660', 'NVDA']));
+  const [stockViews, setStockViews] = useState<Record<string, number>>(() => saved('moa-stock-views', {}));
   const [nickname, setNickname] = useState(() => saved('moa-name', ''));
   const [visitorId] = useState(visitor);
   const [compose, setCompose] = useState(false);
@@ -56,10 +57,10 @@ export default function Home() {
     }
     const candidates = [...STOCKS, ...apiStocks.filter((stock) => stats.has(stock.ticker) && !STOCKS.some((example) => example.ticker === stock.ticker))];
     return candidates
-      .map((stock, index) => ({ stock: stockIndex.get(stock.ticker) ?? stock, index, stats: stats.get(stock.ticker) ?? { posts: 0, views: 0 } }))
-      .sort((a, b) => (b.stats.posts + b.stats.views * 0.5) - (a.stats.posts + a.stats.views * 0.5) || a.index - b.index)
+      .map((stock, index) => ({ stock: stockIndex.get(stock.ticker) ?? stock, index, stats: stats.get(stock.ticker) ?? { posts: 0, views: 0 }, visits: stockViews[stock.ticker] ?? 0 }))
+      .sort((a, b) => b.visits - a.visits || b.stats.posts - a.stats.posts || b.stats.views - a.stats.views || a.index - b.index)
       .map(({ stock }) => stock);
-  }, [apiStocks, posts.data, stockIndex]);
+  }, [apiStocks, posts.data, stockIndex, stockViews]);
   const orderedStocks = useMemo(() => {
     const pinned = popularStocks.filter((stock) => stockIndex.get(stock.ticker) === stock);
     const pinnedSet = new Set(pinned);
@@ -72,7 +73,7 @@ export default function Home() {
   function updateNickname(name: string) { setNickname(name); localStorage.setItem('moa-name', JSON.stringify(name)); }
   function toggleWatch(id: string) { setWatch((current) => { const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]; localStorage.setItem('moa-watch', JSON.stringify(next)); return next; }); }
   function selectSection(next: Section) { setSection(next); setTicker('all'); setSelectedIndexTicker(null); setSearch(''); setStockSearch(''); setMobileMenu(false); if (next === 'hot') setSort('popular'); if (next === 'feed') setSort('recent'); }
-  function selectStock(id: string) { setTicker(id); setSection('feed'); setMobileMenu(false); setSearch(''); }
+  function selectStock(id: string) { setStockViews((current) => { const next = { ...current, [id]: (current[id] ?? 0) + 1 }; localStorage.setItem('moa-stock-views', JSON.stringify(next)); return next; }); setTicker(id); setSection('feed'); setMobileMenu(false); setSearch(''); }
   function selectIndex(id: string) { setSelectedIndexTicker(id); setSection('indices'); setTicker('all'); setSearch(''); setMobileMenu(false); }
   function openThread(post: Post) { view.mutate({ postId: post.id }); setThread(post); }
   function login() { try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
@@ -134,7 +135,7 @@ export default function Home() {
           <div className="feed-end">서로 다른 생각이 모여 더 좋은 대화가 됩니다. <span>✳</span></div>
         </>}
       </main>
-      <aside className="right-sidebar"><div className="right-card popular-card"><div className="right-card-title"><div><span className="section-kicker"><span /> STOCK DISCOVERY</span><h3>눈여겨볼 종목 <span>✳</span></h3></div><button onClick={() => selectSection('stocks')} aria-label="전체 종목 보기"><ArrowUpRight size={18} /></button></div><p className="right-card-subtitle">이야기를 나누고 싶은 종목을 찾아보세요.</p><div className="ranking-list">{popularStocks.map((stock, i) => <div className="ranking-row" key={stock.ticker}><span className="rank-number">{String(i + 1).padStart(2, '0')}</span><button className="rank-stock" onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span><strong>{stock.name}</strong><small>{stock.ticker}</small></span></button><WatchStar active={watch.includes(stock.ticker)} name={stock.name} onClick={() => toggleWatch(stock.ticker)} /></div>)}</div><button className="card-link" onClick={() => selectSection('stocks')}>종목 전체보기 <ArrowRight size={14} /></button></div>
+      <aside className="right-sidebar"><div className="right-card popular-card"><div className="right-card-title"><div><span className="section-kicker"><span /> STOCK DISCOVERY</span><h3>눈여겨볼 종목 <span>✳</span></h3></div><button onClick={() => selectSection('stocks')} aria-label="전체 종목 보기"><ArrowUpRight size={18} /></button></div><p className="right-card-subtitle">종목 상세에 들어간 조회수 순으로 보여드려요.</p><div className="ranking-list">{popularStocks.map((stock, i) => <div className="ranking-row" key={stock.ticker}><span className="rank-number">{String(i + 1).padStart(2, '0')}</span><button className="rank-stock" onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span><strong>{stock.name}</strong><small>{stock.ticker} · 조회 {stockViews[stock.ticker] ?? 0}</small></span></button><WatchStar active={watch.includes(stock.ticker)} name={stock.name} onClick={() => toggleWatch(stock.ticker)} /></div>)}</div><button className="card-link" onClick={() => selectSection('stocks')}>종목 전체보기 <ArrowRight size={14} /></button></div>
         <div className="right-card insight-card"><div className="insight-icon"><Lightbulb size={18} /></div><span className="insight-label">MOA NOTE</span><h3>투자의 시작은<br />좋은 질문 하나부터.</h3><p>궁금한 점이 있다면 편하게 물어보세요. 서로 다른 생각이 새로운 힌트가 될 거예요.</p><button onClick={() => setCompose(true)}>질문하러 가기 <ArrowRight size={15} /></button><div className="insight-decoration">✳</div></div>
         <div className="community-note"><ShieldCheck size={17} /><div><strong>서로를 존중하는 투자 대화</strong><p>모아의 게시글은 투자 권유가 아니며, 투자 판단과 책임은 본인에게 있습니다.</p></div></div>
         <div className="right-card my-page-banner"><div className="my-banner-icon"><Menu size={17} /></div><span className="insight-label">모아 둘러보기</span><h3>나의 투자 활동을<br />한눈에 확인해요.</h3><p>회원정보와 내가 쓴 글, 공감한 글을 모아볼 수 있어요.</p><button onClick={() => selectSection('me')}>마이 페이지 <ArrowRight size={15} /></button></div>
