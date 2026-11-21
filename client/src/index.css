@@ -87,3 +87,14 @@
 .rank-stock strong{line-height:1.35;letter-spacing:-.25px}
 .rank-stock small{line-height:1.2;letter-spacing:0}
 @media(max-width:700px){.index-quote b{font-size:15px}.index-mini-chart{width:96px}}
+
+
+/* Stable Korean typography for popular-stock ranking */
+.ranking-list{font-family:'Noto Sans KR',Arial,sans-serif}
+.ranking-row{min-width:0}
+.rank-number{flex:none;font-family:'DM Sans',Arial,sans-serif;line-height:1}
+.rank-stock{min-width:0;overflow:hidden}
+.rank-stock>span:last-child{overflow:hidden}
+.rank-stock strong{display:block;max-width:100%;font-family:'Noto Sans KR',Arial,sans-serif;font-size:12px;font-weight:700;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-stock small{display:block;font-family:'DM Sans','Noto Sans KR',Arial,sans-serif;font-size:9px;line-height:1.25;white-space:nowrap}
+.index-card-actions button{white-space:nowrap}
