@@ -6,6 +6,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { getStockDirectory } from "../stocks";
+import { getMarketAnalysis, getMarketChart, marketErrorStatus } from "../market";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -22,6 +23,22 @@ async function startServer() {
       res.set("Cache-Control", "no-store").json(directory);
     } catch {
       res.status(503).json({ error: "종목 목록을 불러오지 못했습니다." });
+    }
+  });
+  app.get("/api/market/chart", async (req, res) => {
+    try {
+      const chart = await getMarketChart(typeof req.query.symbol === "string" ? req.query.symbol : "");
+      res.set("Cache-Control", "no-store").json(chart);
+    } catch (error) {
+      res.status(marketErrorStatus(error)).json({ error: error instanceof Error ? error.message : "시세 데이터를 불러오지 못했습니다." });
+    }
+  });
+  app.post("/api/market/analysis", async (req, res) => {
+    try {
+      const analysis = await getMarketAnalysis(req.body?.symbol);
+      res.set("Cache-Control", "no-store").json(analysis);
+    } catch (error) {
+      res.status(marketErrorStatus(error)).json({ error: error instanceof Error ? error.message : "AI 분석을 생성하지 못했습니다." });
     }
   });
   app.get("/api/platform/config.js", (_req, res) => {

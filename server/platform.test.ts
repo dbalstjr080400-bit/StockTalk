@@ -5,6 +5,7 @@ import { sdk } from "./_core/sdk";
 import { listLLMModels } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { COOKIE_NAME } from "../shared/const";
+import { SignJWT } from "jose";
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 describe("current platform integration", () => {
@@ -50,5 +51,15 @@ describe("current platform integration", () => {
     expect(await sdk.verifySession(token)).toMatchObject({ openId: "user-test" });
     vi.stubEnv("MANUS_PROJECT_ID", "different-project");
     expect(await sdk.verifySession(token)).toBeNull();
+  });
+  it("rejects app sessions without an expiration or with an expired expiration", async () => {
+    vi.stubEnv("MANUS_PROJECT_ID", "project-test");
+    vi.stubEnv("MANUS_JWT_SECRET", "unit-test-signing-key-never-deployed");
+    const secret = new TextEncoder().encode("unit-test-signing-key-never-deployed");
+    const noExpiration = await new SignJWT({ openId: "user-test", appId: "project-test", name: "" })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" }).sign(secret);
+    expect(await sdk.verifySession(noExpiration)).toBeNull();
+    const expired = await sdk.signSession({ openId: "user-test", appId: "project-test", name: "" }, { expiresInMs: -60_000 });
+    expect(await sdk.verifySession(expired)).toBeNull();
   });
 });

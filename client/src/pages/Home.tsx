@@ -1,296 +1,146 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import {
-  ArrowDown,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  CircleAlert,
-  Database,
-  Globe2,
-  Info,
-  LoaderCircle,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Bookmark, Check, ChevronDown, Compass, Flame, Heart, Home as HomeIcon, Lightbulb, Menu, MessageCircle, Plus, Search, ShieldCheck, Sparkles, TrendingUp, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { trpc } from '@/lib/trpc';
+import { startLogin } from '@/const';
+import { useAuth } from '@/_core/hooks/useAuth';
+import { STOCKS, searchStocks, stockFor, stockFromDirectory } from '@/lib/stocks';
+import { useStockDirectory } from '@/hooks/useStockDirectory';
+import { PostCard, StockIcon, WatchStar, type Post } from '@/components/CommunityParts';
+import { ComposeDialog, ThreadDialog } from '@/components/CommunityDialogs';
+import { StockExplorer } from '@/components/StockExplorer';
+import StockDetail from '@/components/StockDetail';
+import { IndexSection, NewsSection } from '@/components/MarketSections';
+import { MARKET_INDICES, isMarketIndex } from '@shared/marketIndices';
 
-type Market = "KOSPI" | "KOSDAQ" | "NASDAQ" | "NYSE" | "AMEX" | "KR_ETC" | "US_ETC";
-type Region = "all" | "kr" | "us";
-type Stock = {
-  symbol: string;
-  name: string;
-  englishName?: string;
-  market: Market;
-  type: string;
-};
-type StockDirectory = {
-  source: "toss" | "kis";
-  asOf: string;
-  items: Stock[];
-};
-
-const PAGE_SIZE = 30;
-const KR_MARKETS: Market[] = ["KOSPI", "KOSDAQ", "KR_ETC"];
-const US_MARKETS: Market[] = ["NASDAQ", "NYSE", "AMEX", "US_ETC"];
-const MARKET_LABELS: Record<Market, string> = {
-  KOSPI: "코스피",
-  KOSDAQ: "코스닥",
-  NASDAQ: "나스닥",
-  NYSE: "뉴욕증권거래소",
-  AMEX: "아멕스",
-  KR_ETC: "국내 기타",
-  US_ETC: "미국 기타",
-};
-const SEARCH_ALIASES: Record<string, string[]> = {
-  "삼성전자": ["005930"],
-  "애플": ["aapl", "apple"],
-  "테슬라": ["tsla", "tesla"],
-};
-
-function formatAsOf(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "기준일 정보 없음";
-  return `${new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date)} (한국 시간)`;
-}
-
-function isKoreanMarket(market: Market) {
-  return KR_MARKETS.includes(market);
-}
-
-function StockMark({ stock }: { stock: Stock }) {
-  const isKr = isKoreanMarket(stock.market);
-  const label = isKr ? stock.name.slice(0, 1) : stock.symbol.slice(0, 2).toUpperCase();
-  return <span className={`stock-mark ${isKr ? "stock-mark-kr" : "stock-mark-us"}`} aria-hidden="true">{label}</span>;
-}
+type Section = 'feed' | 'hot' | 'watch' | 'stocks' | 'news' | 'indices' | 'profit' | 'free';
+function saved<T>(key: string, fallback: T): T { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } }
+function visitor(): string { const existing = localStorage.getItem('moa-visitor'); if (existing) return existing; const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; localStorage.setItem('moa-visitor', id); return id; }
 
 export default function Home() {
-  const [directory, setDirectory] = useState<StockDirectory | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [retryCount, setRetryCount] = useState(0);
-  const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
-  const [region, setRegion] = useState<Region>("all");
-  const [market, setMarket] = useState<Market | "all">("all");
-  const [page, setPage] = useState(1);
-
+  const auth = useAuth();
+  const [section, setSection] = useState<Section>('feed');
+  const [ticker, setTicker] = useState('all');
+  const [sort, setSort] = useState<'recent' | 'popular'>('recent');
+  const [search, setSearch] = useState('');
+  const [stockSearch, setStockSearch] = useState('');
+  const [watch, setWatch] = useState<string[]>(() => saved('moa-watch', ['005930', '000660', 'NVDA']));
+  const [nickname, setNickname] = useState(() => saved('moa-name', ''));
+  const [visitorId] = useState(visitor);
+  const [compose, setCompose] = useState(false);
+  const [thread, setThread] = useState<Post | null>(null);
+  const [selectedIndexTicker, setSelectedIndexTicker] = useState<string | null>(null);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    const controller = new AbortController();
-    setStatus("loading");
-    fetch("/api/stocks", { signal: controller.signal })
-      .then(async response => {
-        if (!response.ok) throw new Error("종목 목록 요청 실패");
-        const data: unknown = await response.json();
-        if (
-          !data || typeof data !== "object" ||
-          !("source" in data) || (data.source !== "toss" && data.source !== "kis") ||
-          !("asOf" in data) || typeof data.asOf !== "string" ||
-          !("items" in data) || !Array.isArray(data.items)
-        ) throw new Error("올바르지 않은 종목 목록");
-        return data as StockDirectory;
-      })
-      .then(data => {
-        setDirectory(data);
-        setStatus("ready");
-      })
-      .catch(error => {
-        if (error.name !== "AbortError") {
-          setDirectory(null);
-          setStatus("error");
-        }
-      });
-    return () => controller.abort();
-  }, [retryCount]);
-
-  const counts = useMemo(() => {
-    if (!directory) return null;
-    let kr = 0;
-    let us = 0;
-    for (const stock of directory.items) {
-      if (KR_MARKETS.includes(stock.market)) kr++;
-      if (US_MARKETS.includes(stock.market)) us++;
-    }
-    return { all: directory.items.length, kr, us };
-  }, [directory]);
-
-  const filteredStocks = useMemo(() => {
-    if (!directory) return [];
-    const normalizedQuery = deferredQuery.trim().toLocaleLowerCase();
-    const terms = normalizedQuery ? [normalizedQuery, ...(SEARCH_ALIASES[normalizedQuery] ?? [])] : [];
-    const matches = directory.items.filter(stock => {
-      if (region === "kr" && !KR_MARKETS.includes(stock.market)) return false;
-      if (region === "us" && !US_MARKETS.includes(stock.market)) return false;
-      if (market !== "all" && stock.market !== market) return false;
-      if (!terms.length) return true;
-      const searchable = `${stock.name} ${stock.englishName ?? ""} ${stock.symbol}`.toLocaleLowerCase();
-      return terms.some(term => searchable.includes(term));
-    });
-    if (!normalizedQuery) return matches;
-    const matchPriority = (stock: Stock) => {
-      const fields = [stock.symbol, stock.name, stock.englishName ?? ""].map(value => value.toLocaleLowerCase());
-      if (terms.some(term => fields.some(value => value === term))) return 0;
-      if (terms.some(term => fields.some(value => value.startsWith(term)))) return 1;
-      return 2;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
     };
-    return matches.sort((a, b) => matchPriority(a) - matchPriority(b));
-  }, [directory, deferredQuery, region, market]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredStocks.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const visibleStocks = filteredStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const availableMarkets = region === "kr" ? KR_MARKETS : region === "us" ? US_MARKETS : [...KR_MARKETS, ...US_MARKETS];
-
-  const updateQuery = (value: string) => {
-    setQuery(value);
-    setPage(1);
-  };
-  const updateRegion = (value: Region) => {
-    setRegion(value);
-    setMarket("all");
-    setPage(1);
-  };
-  const resetFilters = () => {
-    setQuery("");
-    setRegion("all");
-    setMarket("all");
-    setPage(1);
-  };
-  const chooseExample = (value: string) => {
-    setQuery(value);
-    setRegion("all");
-    setMarket("all");
-    setPage(1);
-    document.getElementById("stocks")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-  const goToPage = (value: number) => {
-    setPage(value);
-    document.getElementById("stock-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-  const countLabel = (value: number | undefined) => value === undefined ? "—" : value.toLocaleString("ko-KR");
-
-  return (
-    <div className="app-shell">
-      <header className="site-header">
-        <div className="header-inner">
-          <a href="#top" className="brand" aria-label="모아 맨 위로">
-            <span className="brand-symbol" aria-hidden="true"><i /><i /><i /><i /></span>
-            <span>모아</span><span className="brand-dot">.</span>
-          </a>
-          <nav className="header-nav" aria-label="주 메뉴">
-            <a className="nav-active" href="#stocks">종목 둘러보기</a>
-            <a href="#data-info">데이터 안내</a>
-          </nav>
-          <div className="header-note"><span className="header-note-dot" /> 나의 투자를 알아가는 시간</div>
-        </div>
-      </header>
-
-      <main id="top">
-        <section className="hero-wrap" aria-labelledby="hero-title">
-          <div className="hero">
-            <div className="hero-copy">
-              <div className="eyebrow"><span className="eyebrow-line" /> EVERY STOCK, IN ONE PLACE</div>
-              <h1 id="hero-title">궁금한 종목을<br /><span>하나씩, 모아.</span></h1>
-              <p>국내부터 미국까지, 찾고 있던 종목을<br className="desktop-break" /> 한 곳에서 편하게 살펴보세요.</p>
-              <a className="hero-link" href="#stocks">종목 둘러보기 <ArrowDown size={15} strokeWidth={2} /></a>
-            </div>
-            <div className="hero-art" aria-hidden="true">
-              <div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" />
-              <div className="art-center"><span className="art-center-small">A LITTLE CLOSER TO</span><strong>my<br />investment.</strong><span className="art-center-bottom">모아와 함께, 천천히</span></div>
-              <div className="art-pill pill-kr"><span className="pill-icon">KR</span><span>국내 주식<small>KOREA</small></span></div>
-              <div className="art-pill pill-us"><span className="pill-icon pill-icon-us">US</span><span>미국 주식<small>UNITED STATES</small></span></div>
-              <span className="art-star star-one">✳</span><span className="art-star star-two">✳</span>
-            </div>
-            <span className="hero-index">MOA DIRECTORY &nbsp; / &nbsp; 01</span>
-          </div>
-        </section>
-
-        <section className="content-wrap" id="stocks" aria-labelledby="section-title">
-          <div className="section-heading">
-            <div>
-              <div className="section-kicker"><span /> STOCK DIRECTORY</div>
-              <h2 id="section-title">종목 둘러보기</h2>
-              <p>관심 있는 종목을 검색하고, 시장별로 살펴보세요.</p>
-            </div>
-            <div className="section-heading-note"><Globe2 size={15} /> 국내 · 미국 종목 모아보기</div>
-          </div>
-
-          <div className="main-layout">
-            <div className="directory-panel">
-              {status === "ready" && directory && <div className="source-notice"><Info size={15} /><span>{directory.source === "toss" ? <><strong>토스증권 공식 목록</strong>을 보여드려요.</> : <><strong>한국투자증권 공개 종목 목록</strong> · 토스증권 거래 가능 여부는 다를 수 있어요.</>}</span></div>}
-              <div className="search-area">
-                <label className="search-box" htmlFor="stock-search">
-                  <Search className="search-icon" size={21} strokeWidth={2} />
-                  <input id="stock-search" value={query} onChange={event => updateQuery(event.target.value)} placeholder="종목명 또는 티커를 검색해 보세요" autoComplete="off" />
-                  {query && <button className="clear-search" type="button" onClick={() => updateQuery("")} aria-label="검색어 지우기"><X size={16} /></button>}
-                  <span className="search-key">검색</span>
-                </label>
-                <div className="quick-search"><span>이렇게 찾아보세요</span><div>{["삼성전자", "애플", "AAPL"].map(example => <button type="button" key={example} onClick={() => chooseExample(example)}>{example}<ArrowRight size={12} /></button>)}</div></div>
-              </div>
-
-              <div className="filters" aria-label="종목 필터">
-                <div className="region-tabs" role="group" aria-label="국가 선택">
-                  {([ ["all", "전체"], ["kr", "국내"], ["us", "미국"] ] as [Region, string][]).map(([value, label]) => <button type="button" key={value} className={region === value ? "selected" : ""} aria-pressed={region === value} onClick={() => updateRegion(value)}>{label}</button>)}
-                </div>
-                <label className="market-select"><SlidersHorizontal size={15} /><span className="sr-only">거래소 선택</span><select value={market} onChange={event => { setMarket(event.target.value as Market | "all"); setPage(1); }}><option value="all">전체 거래소</option>{availableMarkets.map(value => <option key={value} value={value}>{MARKET_LABELS[value]}</option>)}</select><ChevronRight className="select-chevron" size={14} /></label>
-              </div>
-
-              <div className="results" id="stock-results">
-                <div className="results-heading">
-                  <div><strong>종목 목록</strong>{status === "ready" && <span className="result-count">{filteredStocks.length.toLocaleString("ko-KR")}</span>}</div>
-                  <span>{status === "ready" ? "이름 · 티커 · 거래소" : status === "loading" ? "종목 정보를 불러옵니다" : "종목 정보를 확인할 수 없어요"}</span>
-                </div>
-                {status === "loading" && <div className="state-box" role="status"><LoaderCircle className="spin" size={26} /><strong>종목을 모아오고 있어요</strong><p>잠시만 기다려 주세요.</p></div>}
-                {status === "error" && <div className="state-box" role="alert"><span className="state-icon"><CircleAlert size={22} /></span><strong>종목을 불러오지 못했어요</strong><p>연결 상태를 확인하고 다시 시도해 주세요.</p><button type="button" className="outline-button" onClick={() => setRetryCount(value => value + 1)}><RotateCcw size={14} /> 다시 시도</button></div>}
-                {status === "ready" && filteredStocks.length === 0 && <div className="state-box"><span className="state-icon"><Search size={21} /></span><strong>찾으시는 종목이 없어요</strong><p>검색어 또는 필터를 바꿔서 다시 찾아보세요.</p><button type="button" className="outline-button" onClick={resetFilters}><RotateCcw size={14} /> 검색 조건 초기화</button></div>}
-                {status === "ready" && visibleStocks.length > 0 && <>
-                  <div className="stock-list" role="list" aria-label="검색된 종목">
-                    {visibleStocks.map((stock, index) => <div className="stock-row" role="listitem" key={`${stock.market}-${stock.symbol}-${index}`}>
-                      <StockMark stock={stock} />
-                      <div className="stock-name"><strong>{stock.name}</strong><span>{stock.englishName && stock.englishName !== stock.name ? `${stock.englishName} · ` : ""}{stock.symbol}</span></div>
-                      <div className="stock-meta"><span className="market-badge">{MARKET_LABELS[stock.market] ?? stock.market}</span><span className="stock-type">{stock.type}</span></div>
-                    </div>)}
-                  </div>
-                  <div className="pagination" aria-label="페이지 이동">
-                    <span className="page-summary">{((currentPage - 1) * PAGE_SIZE + 1).toLocaleString("ko-KR")}–{Math.min(currentPage * PAGE_SIZE, filteredStocks.length).toLocaleString("ko-KR")} <span>/ {filteredStocks.length.toLocaleString("ko-KR")}개</span></span>
-                    <div className="page-controls"><button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} aria-label="이전 페이지"><ChevronLeft size={17} /></button><span><strong>{currentPage.toLocaleString("ko-KR")}</strong> / {totalPages.toLocaleString("ko-KR")}</span><button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} aria-label="다음 페이지"><ChevronRight size={17} /></button></div>
-                  </div>
-                </>}
-              </div>
-            </div>
-
-            <aside className="sidebar" aria-label="종목 데이터 요약">
-              <div className="summary-card">
-                <div className="card-topline"><span>THE DIRECTORY</span><span className="mini-mark">✳</span></div>
-                <h3>모아에서 만나는<br />다양한 종목들</h3>
-                <p>목록에 담긴 종목을 시장별로<br />살펴볼 수 있어요.</p>
-                <div className="total-count"><span>전체 종목</span><strong>{countLabel(counts?.all)}<small>개</small></strong></div>
-                <div className="count-divider" />
-                <div className="region-count"><span><i className="count-dot kr-dot" /> 국내</span><strong>{countLabel(counts?.kr)}<small>개</small></strong></div>
-                <div className="region-count"><span><i className="count-dot us-dot" /> 미국</span><strong>{countLabel(counts?.us)}<small>개</small></strong></div>
-              </div>
-              <div className="info-card" id="data-info">
-                <span className="info-icon"><Database size={17} /></span>
-                <h3>종목 데이터 안내</h3>
-                {status === "ready" && directory ? <>
-                  <div className="source-label"><span /> {directory.source === "toss" ? "토스증권 공식 목록" : "한국투자증권 공개 종목 마스터"}</div>
-                  {directory.source === "kis" ? <p className="source-warning">한국투자증권 공개 종목 마스터를 기반으로 합니다. <strong>토스증권 실제 거래 가능 여부는 다를 수 있음</strong></p> : <p>토스증권에서 제공하는 공식 종목 목록을 보여드려요.</p>}
-                  <div className="as-of"><span>데이터 기준</span><strong>{formatAsOf(directory.asOf)}</strong></div>
-                </> : <p>{status === "loading" ? "데이터 출처와 기준일을 확인하고 있어요." : "목록을 불러오면 출처와 기준일을 확인할 수 있어요."}</p>}
-              </div>
-              <div className="quiet-note"><Info size={15} /><p>이곳에서는 종목 목록만 제공해요.<br />실시간 시세나 투자 추천 정보는 포함되어 있지 않습니다.</p></div>
-            </aside>
-          </div>
-        </section>
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+  const directory = useStockDirectory();
+  const apiStocks = useMemo(() => directory.data?.items.map(stockFromDirectory) ?? [], [directory.data]);
+  const stockIndex = useMemo(() => new Map(apiStocks.map((stock) => [stock.ticker, stock])), [apiStocks]);
+  const posts = trpc.discussion.list.useQuery({ visitorId }, { refetchOnWindowFocus: true, refetchInterval: 30_000 });
+  const popularStocks = useMemo(() => {
+    const stats = new Map<string, { posts: number; views: number }>();
+    for (const post of posts.data ?? []) {
+      const current = stats.get(post.ticker) ?? { posts: 0, views: 0 };
+      current.posts += 1;
+      current.views += Number.isFinite(post.views) ? post.views : 0;
+      stats.set(post.ticker, current);
+    }
+    const candidates = [...STOCKS, ...apiStocks.filter((stock) => stats.has(stock.ticker) && !STOCKS.some((example) => example.ticker === stock.ticker))];
+    return candidates
+      .map((stock, index) => ({ stock: stockIndex.get(stock.ticker) ?? stock, index, stats: stats.get(stock.ticker) ?? { posts: 0, views: 0 } }))
+      .sort((a, b) => (b.stats.posts + b.stats.views * 0.5) - (a.stats.posts + a.stats.views * 0.5) || a.index - b.index)
+      .map(({ stock }) => stock);
+  }, [apiStocks, posts.data, stockIndex]);
+  const orderedStocks = useMemo(() => {
+    const pinned = popularStocks.filter((stock) => stockIndex.get(stock.ticker) === stock);
+    const pinnedSet = new Set(pinned);
+    return [...pinned, ...apiStocks.filter((stock) => !pinnedSet.has(stock))];
+  }, [apiStocks, popularStocks, stockIndex]);
+  const searchCatalog = directory.data ? orderedStocks : popularStocks;
+  const create = trpc.discussion.create.useMutation({ onSuccess: (_result, draft) => { setCompose(false); if (isMarketIndex(draft.ticker)) { setSection('indices'); setSelectedIndexTicker(draft.ticker); setTicker('all'); } else { setSection(draft.category === '수익인증' ? 'profit' : draft.category === '자유게시판' ? 'free' : 'feed'); setTicker(draft.category === '수익인증' || draft.category === '자유게시판' ? 'all' : draft.ticker); } setSort('recent'); setSearch(''); void posts.refetch(); toast.success('이야기를 올렸어요.'); }, onError: () => toast.error('게시글을 올리지 못했어요. 잠시 후 다시 시도해 주세요.') });
+  const like = trpc.discussion.toggleLike.useMutation({ onSuccess: () => { void posts.refetch(); }, onError: () => toast.error('공감을 표시하지 못했어요. 다시 시도해 주세요.') });
+  const view = trpc.discussion.incrementViews.useMutation({ onSuccess: () => { void posts.refetch(); } });
+  function updateNickname(name: string) { setNickname(name); localStorage.setItem('moa-name', JSON.stringify(name)); }
+  function toggleWatch(id: string) { setWatch((current) => { const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]; localStorage.setItem('moa-watch', JSON.stringify(next)); return next; }); }
+  function selectSection(next: Section) { setSection(next); setTicker('all'); setSelectedIndexTicker(null); setSearch(''); setStockSearch(''); setMobileMenu(false); if (next === 'hot') setSort('popular'); if (next === 'feed') setSort('recent'); }
+  function selectStock(id: string) { setTicker(id); setSection('feed'); setMobileMenu(false); setSearch(''); }
+  function selectIndex(id: string) { setSelectedIndexTicker(id); setSection('indices'); setTicker('all'); setSearch(''); setMobileMenu(false); }
+  function openThread(post: Post) { view.mutate({ postId: post.id }); setThread(post); }
+  function login() { try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
+  async function logout() { try { await auth.logout(); toast.success('로그아웃했어요.'); } catch { toast.error('로그아웃하지 못했어요. 다시 시도해 주세요.'); } }
+  function resolveStock(id: string) {
+    return stockIndex.get(id) ?? stockFor(id) ?? stockFromDirectory({ symbol: id, name: posts.data?.find((post) => post.ticker === id)?.stockName ?? id, market: '', type: '' });
+  }
+  const filteredPosts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = (posts.data ?? []).filter((post) => (ticker === 'all' || post.ticker === ticker) && (section !== 'watch' || watch.includes(post.ticker)) && (section !== 'profit' || post.category === '수익인증') && (section !== 'free' || post.category === '자유게시판') && (!term || `${post.title} ${post.content} ${post.stockName} ${post.ticker} ${post.author}`.toLowerCase().includes(term)));
+    return [...filtered].sort((a, b) => sort === 'popular' ? (b.likes + b.comments * 2) - (a.likes + a.comments * 2) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [posts.data, ticker, section, watch, search, sort]);
+  const selectedStock = ticker === 'all' ? undefined : resolveStock(ticker);
+  const shownStocks = section === 'watch' ? watch.map(resolveStock) : popularStocks;
+  const feedTabs = selectedStock && !shownStocks.some((stock) => stock.ticker === ticker) ? [selectedStock, ...shownStocks] : shownStocks;
+  const matchedStocks = useMemo(() => search.trim() ? searchStocks(searchCatalog, search) : [], [searchCatalog, search]);
+  const currentThread = thread ? (posts.data?.find((post) => post.id === thread.id) ?? thread) : null;
+  const indexStocks = useMemo(() => MARKET_INDICES.map((index) => stockFromDirectory({ symbol: index.ticker, name: index.name, englishName: index.englishName, market: index.market, type: 'INDEX' })), []);
+  const indexByTicker = useMemo(() => new Map(MARKET_INDICES.map((index) => [index.ticker, index])), []);
+  const selectedIndex = selectedIndexTicker ? indexByTicker.get(selectedIndexTicker) : undefined;
+  const selectedIndexPosts = selectedIndex ? (posts.data ?? []).filter((post) => post.ticker === selectedIndex.ticker).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [];
+  const composeStock = selectedIndex ? indexStocks.find((stock) => stock.ticker === selectedIndex.ticker) : selectedStock;
+  const sidebarLinks: { id: Section; text: string; icon: typeof HomeIcon }[] = [
+    { id: 'feed', text: '전체 피드', icon: HomeIcon }, { id: 'hot', text: '인기 토론', icon: Flame }, { id: 'watch', text: '관심 종목', icon: Bookmark }, { id: 'stocks', text: '종목 둘러보기', icon: Compass },
+  ];
+  const mainLinks: { id: Section; text: string }[] = [
+    { id: 'stocks', text: '인기종목' }, { id: 'feed', text: '종목토론' }, { id: 'news', text: '주요뉴스' }, { id: 'indices', text: '주요지수' }, { id: 'profit', text: '수익인증' }, { id: 'free', text: '자유게시판' },
+  ];
+  const heading = section === 'stocks' ? '종목 둘러보기' : section === 'watch' ? '내 관심 종목 이야기' : section === 'hot' ? '지금 주목하는 이야기' : section === 'news' ? '주요뉴스' : section === 'indices' ? '주요지수' : section === 'profit' ? '수익인증' : section === 'free' ? '자유게시판' : selectedStock ? `${selectedStock.name} 이야기` : '살까, 팔까?';
+  return <div className="app-shell">
+    <header className="topbar"><div className="topbar-inner">
+      <button className="mobile-menu-button icon-button" aria-label="메뉴 열기" onClick={() => setMobileMenu(!mobileMenu)}><Menu size={21} /></button>
+      <button className="brand" onClick={() => selectSection('feed')} aria-label="모아 홈"><img src="/logo.svg" alt="" /><span className="brand-name">모아<span className="brand-dot">.</span></span><span className="brand-caption">투자 이야기가 모이는 곳</span></button>
+      <div className="header-search"><Search size={18} /><input ref={searchRef} value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) { setTicker('all'); setSection('feed'); } }} placeholder="종목이나 이야기를 검색해 보세요" aria-label="종목이나 이야기 검색" />{search && <button onClick={() => setSearch('')} aria-label="검색어 지우기"><X size={15} /></button>}<span className="search-key">⌘ K</span></div>
+      <div className="header-actions">{auth.loading ? <span className="auth-status">확인 중</span> : auth.isAuthenticated && auth.user ? <><span className="auth-name">{auth.user.name || auth.user.email || '이름 미설정'}</span><button className="auth-button" onClick={() => void logout()}>로그아웃</button></> : <><button className="auth-button" onClick={login}>회원가입</button><button className="auth-button login-button" onClick={login}>로그인</button></>}<button className="header-write" onClick={() => setCompose(true)}><Plus size={17} /> 글쓰기</button></div>
+    </div></header>
+    <div className="market-bar"><div className="market-inner"><span className="market-label"><span className="market-dot" /> MARKET SNAPSHOT · 예시</span><div className="market-items"><span>KOSPI <b>2,745.32</b> <em>+0.84%</em></span><span>KOSDAQ <b>812.45</b> <em>+0.56%</em></span><span>NASDAQ <b>18,352.76</b> <em>+1.12%</em></span><span>USD/KRW <b>1,378.50</b> <em className="down">−0.23%</em></span></div><span className="sample-market">예시 데이터 · 실시간 아님</span></div></div>
+    <div className="page-layout">
+      <aside className={`left-sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
+        <div className="sidebar-intro">DISCOVER <span>모아 둘러보기</span></div>
+        <nav className="side-nav" aria-label="커뮤니티 메뉴">{sidebarLinks.map(({ id, text, icon: Icon }) => <button key={id} className={section === id ? 'active' : ''} onClick={() => selectSection(id)}><Icon size={19} strokeWidth={section === id ? 2.2 : 1.7} /><span>{text}</span>{id === 'hot' && <span className="nav-hot">HOT</span>}</button>)}</nav>
+        <div className="side-divider" />
+        <div className="sidebar-section-heading"><span>관심 종목</span><button onClick={() => selectSection('stocks')} aria-label="관심 종목 관리"><Plus size={17} /></button></div>
+        <div className="sidebar-stocks">{watch.length ? watch.map(resolveStock).map((stock) => <button className={ticker === stock.ticker ? 'selected' : ''} key={stock.ticker} onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span>{stock.name}</span><ArrowUpRight size={14} /></button>) : <p className="sidebar-empty">관심 종목을 추가해 보세요.</p>}</div>
+        <button className="side-all-stocks" onClick={() => selectSection('stocks')}>모든 종목 보기 <ArrowRight size={14} /></button>
+        <div className="sidebar-bottom"><div className="mini-bubble"><MessageCircle size={17} fill="currentColor" /></div><strong>생각이 모이면<br />시야가 넓어져요.</strong><span>오늘의 이야기를 나눠보세요.</span><button onClick={() => setCompose(true)}>이야기 쓰기 <ArrowRight size={14} /></button></div>
+      </aside>
+      {mobileMenu && <button className="sidebar-scrim" aria-label="메뉴 닫기" onClick={() => setMobileMenu(false)} />}
+      <main className="main-column">
+        <section className="hero"><div className="hero-copy"><div className="hero-label"><Sparkles size={14} /> INVEST TOGETHER</div><h1>좋은 투자는,<br /><span>좋은 대화에서.</span></h1><p>혼자서는 놓쳤던 관점, 모아에서 함께 발견해요.</p><button onClick={() => setCompose(true)}>나의 생각 나누기 <ArrowRight size={15} /></button></div><div className="hero-visual" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="hero-chat back"><span /><span /><span /></div><div className="hero-chat front"><span /><span /><span /></div><div className="hero-star">✦</div><div className="hero-small-dot" /></div><span className="hero-number">MOA COMMUNITY</span></section>
+        <nav className="main-category-nav" aria-label="주요 메뉴">{mainLinks.map((link) => <button key={link.id} className={section === link.id ? 'active' : ''} aria-current={section === link.id ? 'page' : undefined} onClick={() => selectSection(link.id)}>{link.text}</button>)}</nav>
+        <div className="content-heading"><div><div className="section-kicker"><span /> COMMUNITY FEED</div><h2>{heading} <span className="heading-spark">✳</span></h2><p>{section === 'stocks' ? '관심 있는 종목을 담고 다양한 이야기를 만나보세요.' : section === 'watch' ? '관심 종목에 올라온 이야기를 모았어요.' : section === 'indices' ? '국내외 증시와 가상자산 투자에 필요한 지표를 모았어요.' : section === 'news' ? '투자에 참고할 만한 국내외 주요 뉴스 출처를 모았어요.' : '다양한 시선으로 오늘의 시장을 이야기해요.'}</p></div>{section !== 'news' && section !== 'indices' && <button className="outline-write" onClick={() => setCompose(true)}><Plus size={16} /> 글쓰기</button>}</div>
+        {section === 'stocks' ? <StockExplorer stocks={orderedStocks} directory={directory.data} loading={directory.loading} error={directory.error} retry={directory.retry} query={stockSearch} onQuery={setStockSearch} watch={watch} onToggleWatch={toggleWatch} onSelect={selectStock} /> : selectedStock && section === 'feed' ? <StockDetail stock={selectedStock} posts={filteredPosts} onBack={() => setTicker('all')} onLike={(post) => like.mutate({ postId: post.id, visitorId })} onComments={openThread} onWrite={() => setCompose(true)} isWatched={watch.includes(selectedStock.ticker)} onToggleWatch={() => toggleWatch(selectedStock.ticker)} /> : section === 'news' ? <NewsSection /> : section === 'indices' ? <IndexSection selected={selectedIndex} posts={selectedIndexPosts} indexStocks={indexStocks} onSelect={(index) => selectIndex(index.ticker)} onWrite={() => setCompose(true)} onLike={(post) => like.mutate({ postId: post.id, visitorId })} onComments={openThread} /> : <>
+          <div className="feed-controls">{section === 'watch' && watch.length > 0 && <div className="stock-tabs"><button className={ticker === 'all' ? 'active' : ''} onClick={() => setTicker('all')}>전체</button>{feedTabs.filter((stock) => watch.includes(stock.ticker)).map((stock) => <button key={stock.ticker} className={ticker === stock.ticker ? 'active' : ''} onClick={() => setTicker(stock.ticker)}>{stock.name}</button>)}</div>}{selectedStock && <WatchStar active={watch.includes(selectedStock.ticker)} name={selectedStock.name} onClick={() => toggleWatch(selectedStock.ticker)} />}<button className="sort-button" onClick={() => setSort(sort === 'recent' ? 'popular' : 'recent')}>{sort === 'recent' ? '최신순' : '인기순'} <ChevronDown size={15} /></button></div>
+          {search && <div className="search-summary"><strong>“{search}”</strong> 게시글 검색 결과 <span>{filteredPosts.length}개</span><button onClick={() => setSearch('')}>초기화 <X size={13} /></button></div>}
+          {search && <div className="search-stock-results"><span>일치하는 종목</span>{matchedStocks.slice(0, 8).map((stock) => <button key={stock.ticker} onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><strong>{stock.name}</strong><small>{stock.ticker}</small><ArrowUpRight size={14} /></button>)}{directory.loading && <span>종목 목록 불러오는 중</span>}{directory.error && <><span>종목 목록을 불러오지 못했어요.</span><button onClick={directory.retry}>다시 시도</button></>}{!directory.error && !directory.loading && <button onClick={() => { setStockSearch(search); setSearch(''); setTicker('all'); setSection('stocks'); }}>종목 검색 결과 전체보기 <ArrowRight size={14} /></button>}</div>}
+          <div className="feed-list">{posts.isLoading ? <div className="feed-state"><span className="loading-pulse" /> 이야기를 불러오는 중이에요.</div> : posts.isError ? <div className="feed-state">이야기를 불러오지 못했어요.<button onClick={() => void posts.refetch()}>다시 시도</button></div> : filteredPosts.length ? filteredPosts.map((post) => <PostCard key={post.id} post={post} stock={resolveStock(post.ticker)} onLike={() => like.mutate({ postId: post.id, visitorId })} onComments={() => openThread(post)} onStock={() => selectStock(post.ticker)} />) : <div className="feed-state"><MessageCircle size={26} /><strong>아직 이야기가 없어요</strong><span>첫 번째 이야기를 나누어 보는 건 어떨까요?</span><button onClick={() => setCompose(true)}>이야기 쓰기 <ArrowRight size={14} /></button></div>}</div>
+          <div className="feed-end">서로 다른 생각이 모여 더 좋은 대화가 됩니다. <span>✳</span></div>
+        </>}
       </main>
-      <footer className="site-footer"><div><span className="footer-brand">모아<span>.</span></span><p>관심 있는 것들을 하나씩 모아, 나만의 시선으로.</p><span>MOA · STOCK DIRECTORY</span></div></footer>
+      <aside className="right-sidebar"><div className="right-card popular-card"><div className="right-card-title"><div><span className="section-kicker"><span /> STOCK DISCOVERY</span><h3>눈여겨볼 종목 <span>✳</span></h3></div><button onClick={() => selectSection('stocks')} aria-label="전체 종목 보기"><ArrowUpRight size={18} /></button></div><p className="right-card-subtitle">이야기를 나누고 싶은 종목을 찾아보세요.</p><div className="ranking-list">{popularStocks.map((stock, i) => <div className="ranking-row" key={stock.ticker}><span className="rank-number">{String(i + 1).padStart(2, '0')}</span><button className="rank-stock" onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span><strong>{stock.name}</strong><small>{stock.ticker}</small></span></button><WatchStar active={watch.includes(stock.ticker)} name={stock.name} onClick={() => toggleWatch(stock.ticker)} /></div>)}</div><button className="card-link" onClick={() => selectSection('stocks')}>종목 전체보기 <ArrowRight size={14} /></button></div>
+        <div className="right-card insight-card"><div className="insight-icon"><Lightbulb size={18} /></div><span className="insight-label">MOA NOTE</span><h3>투자의 시작은<br />좋은 질문 하나부터.</h3><p>궁금한 점이 있다면 편하게 물어보세요. 서로 다른 생각이 새로운 힌트가 될 거예요.</p><button onClick={() => setCompose(true)}>질문하러 가기 <ArrowRight size={15} /></button><div className="insight-decoration">✳</div></div>
+        <div className="community-note"><ShieldCheck size={17} /><div><strong>서로를 존중하는 투자 대화</strong><p>모아의 게시글은 투자 권유가 아니며, 투자 판단과 책임은 본인에게 있습니다.</p></div></div>
+        <div className="sidebar-footer">MOA COMMUNITY <span>© 2026 모아</span><br />함께 나누는, 더 넓은 시야</div>
+      </aside>
     </div>
-  );
+    <nav className="mobile-bottom" aria-label="모바일 메뉴">{sidebarLinks.map(({ id, text, icon: Icon }) => <button className={section === id ? 'active' : ''} key={id} onClick={() => selectSection(id)}><Icon size={19} /><span>{text === '종목 둘러보기' ? '종목' : text.replace('전체 피드', '홈')}</span></button>)}<button onClick={() => setCompose(true)}><Plus size={19} /><span>글쓰기</span></button></nav>
+    {compose && <ComposeDialog initialStock={composeStock} initialCategory={section === 'profit' ? '수익인증' : section === 'free' ? '자유게시판' : '자유토론'} stocks={selectedIndex ? [...indexStocks, ...searchCatalog] : searchCatalog} popular={selectedIndex ? [composeStock!, ...popularStocks] : popularStocks} loading={directory.loading} error={directory.error} retry={directory.retry} nickname={nickname} onNickname={updateNickname} onClose={() => setCompose(false)} pending={create.isPending} onSubmit={(draft) => create.mutate(draft)} />}
+    {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} nickname={nickname} onNickname={updateNickname} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} />}
+  </div>;
 }

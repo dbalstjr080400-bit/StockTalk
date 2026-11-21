@@ -67,6 +67,11 @@ async function fetchTossDirectory(clientId: string, clientSecret: string): Promi
   if (!items.some(s => s.market === "KOSPI") || !items.some(s => s.market === "NASDAQ")) {
     throw new Error("토스 종목 목록이 불완전합니다");
   }
+  // The existing community identifies posts and watchlists by ticker alone.
+  // Do not silently merge different market instruments if a feed has collisions.
+  if (new Set(items.map(item => item.symbol)).size !== items.length) {
+    throw new Error("시장별 중복 종목 코드가 있어 목록을 안전하게 연결할 수 없습니다");
+  }
   return { source: "toss", asOf: new Date().toISOString(), items };
 }
 

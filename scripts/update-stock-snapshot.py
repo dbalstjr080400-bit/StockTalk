@@ -71,6 +71,8 @@ def main():
     # Never overwrite a usable snapshot with a partial or malformed download.
     pairs = {(item['market'], item['symbol']) for item in items}
     assert len(items) > 10000 and ('KOSPI', '005930') in pairs and ('NASDAQ', 'AAPL') in pairs
+    if len({item['symbol'] for item in items}) != len(items):
+        raise ValueError('Some symbols appear in multiple markets; do not merge community identities by ticker')
     snapshot = {'source': 'kis', 'asOf': datetime.now(timezone.utc).isoformat(), 'items': items}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(snapshot, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
