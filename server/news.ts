@@ -20,6 +20,9 @@ const SOURCES: NewsSourceConfig[] = [
   { source: "BBC Business", url: "https://www.bbc.com/business", ranking: "공식 주요 노출", match: href => href.includes("bbc.com/news/articles/") },
   { source: "Yahoo Finance", url: "https://finance.yahoo.com/news/", ranking: "Yahoo Finance 주요 뉴스", match: href => href.includes("finance.yahoo.com/news/") && !href.includes("/video/") },
   { source: "CNBC Markets", url: "https://www.cnbc.com/markets/", ranking: "Trending Now", match: href => href.includes("cnbc.com/") && /20\d\d\//.test(href) },
+  { source: "Reuters Business", url: "https://www.reuters.com/business/", ranking: "Reuters 주요 경제뉴스", match: href => href.includes("reuters.com/business/") && !href.includes("/video/") },
+  { source: "Financial Times Markets", url: "https://www.ft.com/markets", ranking: "FT Markets 주요 기사", match: href => href.includes("ft.com/content/") },
+  { source: "MarketWatch", url: "https://www.marketwatch.com/", ranking: "MarketWatch 주요 시장뉴스", match: href => href.includes("marketwatch.com/story/") },
 ];
 
 let cached: { expiresAt: number; items: NewsHeadline[] } | null = null;

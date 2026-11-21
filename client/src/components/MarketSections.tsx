@@ -11,6 +11,9 @@ const NEWS_SOURCES: NewsSource[] = [
   { name: 'BBC Business', description: '글로벌 기업·경제·시장 동향', url: 'https://www.bbc.com/business', tone: 'BBC' },
   { name: 'Yahoo Finance', description: '미국 시장·지수·기업 뉴스와 시세', url: 'https://finance.yahoo.com/news/', tone: 'YAHOO' },
   { name: 'CNBC Markets', description: '미국·글로벌 시장의 주요 움직임', url: 'https://www.cnbc.com/markets/', tone: 'CNBC' },
+  { name: 'Reuters Business', description: '글로벌 경제·기업·금융시장 전문 뉴스', url: 'https://www.reuters.com/business/', tone: 'REUTERS' },
+  { name: 'Financial Times Markets', description: '세계 금융시장·거시경제·기업 분석', url: 'https://www.ft.com/markets', tone: 'FT' },
+  { name: 'MarketWatch', description: '미국 증시·채권·금리·시장 데이터 뉴스', url: 'https://www.marketwatch.com/', tone: 'MW' },
 ];
 
 type NewsHeadline = { source: string; sourceUrl: string; ranking: string; title: string; summary?: string; url: string };
