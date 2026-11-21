@@ -42,3 +42,32 @@
 .post-actions{align-items:center}
 @media(max-width:1000px){.header-search{margin-left:auto}.header-actions{margin-left:0}.auth-button,.header-write{min-height:32px;display:inline-flex;align-items:center;justify-content:center}}
 @media(max-width:700px){.topbar-inner{display:flex}.brand-dot{color:#d83d4b}.header-search{margin-left:auto}.header-actions{gap:5px}}
+
+
+/* My page moved into the lower-right discovery banner */
+.my-page{min-width:0}
+.my-profile-card{display:flex;align-items:center;gap:14px;padding:22px;border:1px solid #edc6ca;border-radius:11px;background:#fffafa}
+.my-profile-icon,.my-banner-icon{display:flex;align-items:center;justify-content:center;flex:none;width:46px;height:46px;border-radius:13px;background:#ffe4e6;color:#c33240}
+.my-profile-card .section-kicker{color:#c33240}
+.my-profile-card h3{margin-top:8px;font-size:18px;letter-spacing:-.6px;color:#303b4d}
+.my-profile-card p{margin-top:5px;font-size:11px;color:#9a7075}
+.my-profile-card .auth-button{margin-left:auto;flex:none}
+.my-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.my-stats div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:17px 8px;border:1px solid #edf0f4;border-radius:9px;background:#fff}
+.my-stats strong{font-family:'DM Sans',sans-serif;font-size:20px;color:#c33240}
+.my-stats span{font-size:10px;color:#9ca6b3;font-weight:700}
+.my-activity-heading{display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 14px}
+.my-activity-heading h3{margin-top:8px;font-size:18px;letter-spacing:-.7px;color:#303b4d}
+.my-activity-heading>svg{color:#c33240;margin-bottom:2px}
+.my-empty{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px dashed #e7c2c6;border-radius:10px;background:#fffafa;color:#b08c91;text-align:center}
+.my-empty svg{color:#d83d4b}
+.my-empty strong{font-size:13px;color:#6d5055}
+.my-empty span{font-size:10px}
+.my-empty button{display:flex;align-items:center;gap:5px;margin-top:6px;color:#d83d4b;font-size:11px;font-weight:800}
+.my-page-banner{padding:18px 19px;background:#fff7f7;border-color:#f0c9cd;position:relative;overflow:hidden}
+.my-page-banner .my-banner-icon{width:30px;height:30px;border-radius:9px;margin-bottom:10px}
+.my-page-banner .insight-label{display:block;padding-top:0;color:#c33240}
+.my-page-banner h3{clear:both;padding-top:12px;font-size:14px;line-height:1.5;letter-spacing:-.5px;color:#7c343d}
+.my-page-banner p{font-size:10px;line-height:1.7;color:#ad7b81;margin-top:8px}
+.my-page-banner button{display:flex;align-items:center;gap:7px;font-weight:800;color:#c33240;font-size:10px;margin-top:12px;padding:0}
+@media(max-width:700px){.my-profile-card{padding:18px 16px}.my-profile-card h3{font-size:16px}.my-stats{gap:7px}.my-stats div{padding:14px 5px}}
