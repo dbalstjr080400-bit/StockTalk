@@ -300,3 +300,11 @@
 .thread-post-actions button:hover{border-color:#d83d4b;color:#d83d4b;background:#fff7f7}
 .thread-post-actions button.danger{color:#bf6972}
 .thread-post-actions button.danger:hover{border-color:#cf5260;color:#ae2938}
+
+
+.post-menu-wrap{position:relative;margin-left:auto;display:flex}
+.post-menu{position:absolute;z-index:30;top:30px;right:0;display:flex;min-width:92px;flex-direction:column;gap:3px;padding:6px;border:1px solid #f0d5d8;border-radius:10px;background:#fff;box-shadow:0 10px 26px #8f3b451c}
+.post-menu button{display:flex;align-items:center;gap:7px;width:100%;padding:8px 9px;border-radius:7px;color:#8e6870;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:800;text-align:left;white-space:nowrap}
+.post-menu button:hover{background:#fff0f1;color:#d83d4b}
+.post-menu button.danger{color:#bd6872}
+.post-menu button.danger:hover{background:#fff0f1;color:#ad2f3d}

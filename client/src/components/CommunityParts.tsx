@@ -1,4 +1,5 @@
-import { ArrowUpRight, Heart, MessageCircle, MoreHorizontal, Share2, Star } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowUpRight, Flag, Heart, MessageCircle, MoreHorizontal, Pencil, Share2, Star, Trash2 } from 'lucide-react';
 import { relativeTime, stockFor, type Stock } from '@/lib/stocks';
 
 export type Post = {
@@ -30,8 +31,9 @@ export function WatchStar({ active, onClick, name }: { active: boolean; onClick:
 
 function postTags(content: string) { return [...new Set(content.match(/#[^\s#]+/g) ?? [])].slice(0, 8); }
 
-export function PostCard({ post, stock, onLike, onComments, onStock }: { post: Post; stock?: Stock; onLike: () => void; onComments: () => void; onStock: () => void }) {
+export function PostCard({ post, stock, onLike, onComments, onStock, currentAuthor, onEdit, onDelete, onReport }: { post: Post; stock?: Stock; onLike: () => void; onComments: () => void; onStock: () => void; currentAuthor?: string; onEdit?: () => void; onDelete?: () => void; onReport?: () => void }) {
   stock = stock ?? stockFor(post.ticker);
+  const [menuOpen, setMenuOpen] = useState(false);
   function share() {
     const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`;
     if (navigator.share) { void navigator.share({ title: post.title, text: post.content.slice(0, 120), url }).catch(() => undefined); }
@@ -43,7 +45,7 @@ export function PostCard({ post, stock, onLike, onComments, onStock }: { post: P
       <span className="post-category">{post.category}</span>
       {post.isDemo && <span className="demo-tag">예시 글</span>}
       {post.isEdited && <span className="edited-tag">수정함</span>}
-      <button className="post-more" aria-label="게시글 내용 보기" onClick={onComments}><MoreHorizontal size={20} /></button>
+      <div className="post-menu-wrap"><button className="post-more" aria-label="게시글 메뉴" onClick={() => setMenuOpen(value => !value)}><MoreHorizontal size={20} /></button>{menuOpen && <div className="post-menu" role="menu"><button onClick={() => { setMenuOpen(false); share(); }}><Share2 size={14} /> 공유</button>{currentAuthor === post.author && onEdit && <button onClick={() => { setMenuOpen(false); onEdit(); }}><Pencil size={14} /> 수정</button>}{currentAuthor === post.author && onDelete && <button className="danger" onClick={() => { setMenuOpen(false); onDelete(); }}><Trash2 size={14} /> 삭제</button>}{onReport && <button onClick={() => { setMenuOpen(false); onReport(); }}><Flag size={14} /> 신고</button>}</div>}</div>
     </div>
     <button className="post-content" onClick={onComments}>
       <h3>{post.title}</h3>
@@ -54,7 +56,6 @@ export function PostCard({ post, stock, onLike, onComments, onStock }: { post: P
       <div className="post-author"><Avatar name={post.author} /><span>{post.author}</span><i /> <span className="post-time">{relativeTime(post.createdAt)}</span></div>
       <div className="post-actions">
         <span className="post-views">조회 {post.views}</span>
-        <button onClick={(event) => { event.stopPropagation(); share(); }} aria-label="게시글 공유"><Share2 size={15} /><span>공유</span></button>
         <button className={post.liked ? 'liked' : ''} onClick={onLike} aria-label={post.liked ? '공감 취소' : '공감하기'}><Heart size={16} fill={post.liked ? 'currentColor' : 'none'} /><span>{post.likes}</span></button>
         <button onClick={onComments} aria-label="댓글 보기"><MessageCircle size={16} /><span>{post.comments}</span></button>
       </div>

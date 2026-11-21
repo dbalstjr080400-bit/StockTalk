@@ -6,6 +6,7 @@ import {
   discussionComments,
   discussionLikes,
   discussionPosts,
+  discussionReports,
   InsertUser,
   users,
 } from "../drizzle/schema";
@@ -184,6 +185,14 @@ export async function deleteDiscussionPost(postId: number, author: string) {
     await tx.delete(discussionLikes).where(eq(discussionLikes.postId, postId));
     await tx.delete(discussionPosts).where(eq(discussionPosts.id, postId));
   });
+  return { success: true } as const;
+}
+
+export async function reportDiscussionPost(input: { postId: number; reporter: string; reason: string }) {
+  const db = await requireDb();
+  const [post] = await db.select({ id: discussionPosts.id }).from(discussionPosts).where(eq(discussionPosts.id, input.postId)).limit(1);
+  if (!post) throw new TRPCError({ code: "NOT_FOUND", message: "게시글을 찾을 수 없습니다." });
+  await db.insert(discussionReports).values(input);
   return { success: true } as const;
 }
 

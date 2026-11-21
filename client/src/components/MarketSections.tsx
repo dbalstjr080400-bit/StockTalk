@@ -79,9 +79,13 @@ type IndexSectionProps = {
   onWrite: () => void;
   onLike: (post: Post) => void;
   onComments: (post: Post) => void;
+  currentAuthor?: string;
+  onEdit: (post: Post) => void;
+  onDelete: (post: Post) => void;
+  onReport: (post: Post) => void;
 };
 
-export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, onWrite, onLike, onComments }: IndexSectionProps) {
+export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, onWrite, onLike, onComments, currentAuthor, onEdit, onDelete, onReport }: IndexSectionProps) {
   const [sort, setSort] = useState<'recent' | 'popular'>('recent');
   const [period, setPeriod] = useState<'all' | 'day' | 'week' | 'month'>('all');
   const stockForIndex = (index: MarketIndex) => indexStocks.find((stock) => stock.ticker === index.ticker) as Stock;
@@ -97,7 +101,7 @@ export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, 
       <div className="index-card-actions"><a href={index.sourceUrl} target="_blank" rel="noopener noreferrer">시세 보기 <ArrowUpRight size={13} /></a><button onClick={() => onSelect(index)}><MessageCircle size={13} /> 게시판 열기</button></div>
     </article>; })}</div>
     {selected && <div className="index-board-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="index-board index-board-modal" role="dialog" aria-modal="true" aria-label={`${selected.name} 게시판`}><div className="index-board-heading"><div><span className="market-card-kicker">{selected.market}</span><h3>{selected.name} 게시판 <span>{visiblePosts.length}</span></h3><p>{selected.name}에 관한 글과 의견을 이 게시판에서 나눠보세요.</p></div><div className="index-board-actions"><button className="index-board-close" onClick={onClose} aria-label="게시판 닫기"><X size={19} /></button></div></div><div className="index-board-sort"><div className="index-sort-tabs"><button className={sort === 'recent' ? 'active' : ''} onClick={() => setSort('recent')}>최신순</button><button className={sort === 'popular' ? 'active' : ''} onClick={() => setSort('popular')}>인기순</button></div>{sort === 'popular' && <div className="index-period-tabs"><button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>전체</button><button className={period === 'day' ? 'active' : ''} onClick={() => setPeriod('day')}>1일</button><button className={period === 'week' ? 'active' : ''} onClick={() => setPeriod('week')}>1주</button><button className={period === 'month' ? 'active' : ''} onClick={() => setPeriod('month')}>1개월</button></div>}</div>
-      {visiblePosts.length ? <div className="feed-list">{visiblePosts.map((post) => <PostCard key={post.id} post={post} stock={stockForIndex(selected)} onLike={() => onLike(post)} onComments={() => onComments(post)} onStock={() => onSelect(selected)} />)}</div> : <div className="feed-state"><MessageCircle size={24} /><strong>아직 {selected.name} 이야기가 없어요.</strong><span>이 지수의 첫 글을 작성해 보세요.</span></div>}<button className="index-board-compose" onClick={onWrite} aria-label={`${selected.name} 게시판 글쓰기`}><Plus size={23} /></button>
+      {visiblePosts.length ? <div className="feed-list">{visiblePosts.map((post) => <PostCard key={post.id} post={post} stock={stockForIndex(selected)} onLike={() => onLike(post)} onComments={() => onComments(post)} onStock={() => onSelect(selected)} currentAuthor={currentAuthor} onEdit={() => onEdit(post)} onDelete={() => onDelete(post)} onReport={() => onReport(post)} />)}</div> : <div className="feed-state"><MessageCircle size={24} /><strong>아직 {selected.name} 이야기가 없어요.</strong><span>이 지수의 첫 글을 작성해 보세요.</span></div>}<button className="index-board-compose" onClick={onWrite} aria-label={`${selected.name} 게시판 글쓰기`}><Plus size={23} /></button>
     </section></div>}
   </section>;
 }

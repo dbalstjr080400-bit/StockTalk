@@ -22,6 +22,13 @@
       "when": 1795271145387,
       "tag": "0002_smart_ronan",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1795271580610,
+      "tag": "0003_furry_luckman",
+      "breakpoints": true
     }
   ]
 }

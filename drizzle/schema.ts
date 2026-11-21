@@ -83,3 +83,15 @@ export const discussionLikes = mysqlTable(
     ),
   ]
 );
+
+export const discussionReports = mysqlTable(
+  "discussion_reports",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    postId: int("postId").notNull().references(() => discussionPosts.id),
+    reporter: varchar("reporter", { length: 40 }).notNull(),
+    reason: varchar("reason", { length: 200 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("discussion_reports_post_id_idx").on(table.postId)]
+);

@@ -14,6 +14,7 @@ import {
   getDiscussionComments,
   incrementDiscussionViews,
   listDiscussionPosts,
+  reportDiscussionPost,
   toggleDiscussionLike,
   updateDiscussionPost,
 } from "./db";
@@ -83,6 +84,9 @@ export const appRouter = router({
     remove: limitedDiscussionWrite
       .input(z.object({ postId, author: singleLine(40) }))
       .mutation(({ input }) => deleteDiscussionPost(input.postId, input.author)),
+    report: limitedDiscussionWrite
+      .input(z.object({ postId, reporter: singleLine(40), reason: singleLine(200) }))
+      .mutation(({ input }) => reportDiscussionPost(input)),
     incrementViews: publicProcedure
       .input(z.object({ postId }))
       .mutation(({ input }) => incrementDiscussionViews(input.postId)),
