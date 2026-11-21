@@ -219,3 +219,14 @@
 .tag-option-list button.selected{border-color:#d83d4b;background:#fff0f2;color:#c43f4c}
 
 .compose-form .form-two.board-selector-hidden{grid-template-columns:1fr}
+
+/* Index-specific discussion room modal */
+.index-board-backdrop{position:fixed;z-index:90;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#18233a80}
+.index-board-modal{width:min(760px,100%);max-height:min(82vh,760px);overflow:auto;padding:22px;border:1px solid #edf0f4;border-radius:14px;background:#fff;box-shadow:0 24px 80px #17233d38}
+.index-board-actions{display:flex;align-items:center;gap:8px}
+.index-board-close{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid #edf0f4;border-radius:7px;color:#a7b0bc;background:#fff}
+.index-board-close:hover{color:#345bea;border-color:#cbd5ff}
+@media(max-width:700px){.index-board-backdrop{align-items:flex-end;padding:0}.index-board-modal{max-height:90dvh;border-radius:16px 16px 0 0;padding:18px 15px}.index-board-heading{gap:10px}.index-board-heading .outline-write{display:flex}}
+
+.index-board-compose{position:sticky;bottom:8px;display:flex;align-items:center;justify-content:center;width:48px;height:48px;margin:16px 0 0 auto;border-radius:50%;background:#d83d4b;color:#fff;box-shadow:0 8px 22px #d83d4b45}
+.index-board-compose:hover{background:#b92d3a;transform:translateY(-1px)}
