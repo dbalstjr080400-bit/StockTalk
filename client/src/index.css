@@ -202,3 +202,8 @@
 .profile-edit-actions button{padding:8px 12px;border-radius:6px;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:800}
 .profile-edit-actions button:first-child{border:1px solid #eadcdf;color:#9b777c;background:#fff}
 .profile-edit-actions button:last-child{color:#fff;background:#d83d4b}
+
+/* User-defined hashtags in the writing dialog and post cards */
+.tag-helper{display:block;margin-top:-2px;color:#b49a9f;font-size:9px;font-weight:500}
+.post-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.post-tags span{display:inline-flex;padding:4px 7px;border-radius:999px;background:#fff1f2;color:#c54e59;font-size:9px;font-weight:700;line-height:1}

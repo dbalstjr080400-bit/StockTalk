@@ -28,6 +28,8 @@ export function WatchStar({ active, onClick, name }: { active: boolean; onClick:
   return <button type="button" className={`star-button ${active ? 'active' : ''}`} aria-label={`${name} 관심 종목 ${active ? '해제' : '추가'}`} onClick={(e) => { e.stopPropagation(); onClick(); }}><Star size={17} fill={active ? 'currentColor' : 'none'} /></button>;
 }
 
+function postTags(content: string) { return [...new Set(content.match(/#[^\s#]+/g) ?? [])].slice(0, 8); }
+
 export function PostCard({ post, stock, onLike, onComments, onStock }: { post: Post; stock?: Stock; onLike: () => void; onComments: () => void; onStock: () => void }) {
   stock = stock ?? stockFor(post.ticker);
   return <article className="post-card">
@@ -40,6 +42,7 @@ export function PostCard({ post, stock, onLike, onComments, onStock }: { post: P
     <button className="post-content" onClick={onComments}>
       <h3>{post.title}</h3>
       <p>{post.content}</p>
+      {postTags(post.content).length > 0 && <div className="post-tags" aria-label="게시글 태그">{postTags(post.content).map((tag) => <span key={tag}>{tag}</span>)}</div>}
     </button>
     <div className="post-bottom">
       <div className="post-author"><Avatar name={post.author} /><span>{post.author}</span><i /> <span className="post-time">{relativeTime(post.createdAt)}</span></div>
