@@ -46,7 +46,7 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
       <div className="form-two"><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} /><label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>종목토론</option><option>자유게시판</option></select></label></div>
       <label>닉네임<input required maxLength={20} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="대화에 사용할 닉네임" /></label>
       <label>제목<input required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="어떤 이야기를 나누고 싶나요?" /></label>
-      <label>태그<input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="#질문 #수익인증처럼 입력해 보세요" maxLength={240} /><small className="tag-helper">띄어쓰기로 나누어 최대 8개까지 추가할 수 있어요.</small></label>
+      <label>태그<input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="태그를 입력해 주세요" maxLength={240} /><small className="tag-helper">띄어쓰기로 나누어 최대 8개까지 추가할 수 있어요.</small></label>
       <label>내용<textarea required maxLength={4000} value={content} onChange={(e) => setContent(e.target.value)} placeholder="서로의 생각을 존중하며 이야기를 나눠주세요." rows={7} /></label>
       <div className="form-footer"><span>투자 판단은 스스로, 대화는 따뜻하게.</span><button disabled={pending || !stock} className="primary-button" type="submit">{pending ? '등록 중...' : '이야기 올리기'} <ArrowIcon /></button></div>
     </form>
