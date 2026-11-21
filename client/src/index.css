@@ -115,3 +115,11 @@
 .explore-count{margin-top:15px;color:#9d7e82;font-size:11px;font-weight:600}
 .explore-count strong{margin-left:4px;color:#7d3b43;font-size:13px;font-weight:800}
 @media(max-width:600px){.explore-filter-row{align-items:flex-start;flex-direction:column}.market-filter{width:100%;justify-content:space-between}}
+
+
+/* Stock explorer search typography */
+.explore-search,.explore-search input,.explore-search input::placeholder{font-family:'Noto Sans KR',Arial,sans-serif;font-synthesis:none;word-break:keep-all}
+.explore-search{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border:1px solid #f0dfe1;border-radius:8px;background:#fff;color:#b07f85}
+.explore-search input{width:100%;min-width:0;border:0;background:transparent;color:#6f4d52;font-size:11px;font-weight:500;line-height:1.5}
+.explore-search input::placeholder{color:#b08b90;font-size:11px;font-weight:500;opacity:1}
+.explore-search:focus-within{border-color:#d83d4b;box-shadow:0 0 0 3px #d83d4b12}
