@@ -188,3 +188,17 @@
 /* Hourly refresh note for popular discussion sorting */
 .popular-refresh-note{font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;color:#a47b80;white-space:nowrap;letter-spacing:-.2px}
 @media(max-width:700px){.popular-refresh-note{font-size:9px}}
+
+/* Profile settings shown from the mobile more menu */
+.profile-edit-trigger{display:flex;align-items:center;gap:6px;width:100%;margin:14px 0 18px;padding:12px 14px;border:1px solid #f0d5d8;border-radius:8px;background:#fffafa;color:#a7333f;font-family:'Noto Sans KR',Arial,sans-serif;font-size:11px;font-weight:800}
+.profile-edit-card{margin:14px 0 18px;padding:18px;border:1px solid #f0d5d8;border-radius:10px;background:#fffafa}
+.profile-edit-heading{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:15px;color:#a7333f}
+.profile-edit-heading h3{margin-top:6px;color:#4a2630;font-size:15px;letter-spacing:-.5px}
+.profile-edit-card label{display:flex;flex-direction:column;gap:6px;margin-top:12px;color:#7b5960;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:800}
+.profile-edit-card input{width:100%;height:36px;padding:0 10px;border:1px solid #eadcdf;border-radius:6px;background:#fff;color:#4b3d42;font-size:11px}
+.profile-edit-card input:focus{border-color:#d83d4b;box-shadow:0 0 0 3px #d83d4b18}
+.profile-edit-note{margin-top:12px;color:#a47b80;font-family:'Noto Sans KR',Arial,sans-serif;font-size:9px;line-height:1.6}
+.profile-edit-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:16px}
+.profile-edit-actions button{padding:8px 12px;border-radius:6px;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:800}
+.profile-edit-actions button:first-child{border:1px solid #eadcdf;color:#9b777c;background:#fff}
+.profile-edit-actions button:last-child{color:#fff;background:#d83d4b}
