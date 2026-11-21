@@ -40,7 +40,7 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
   return <Modal onClose={onClose} label="새 이야기 작성">
     <div className="dialog-heading"><div><span className="eyebrow">SHARE YOUR THOUGHTS</span><h2>새 이야기 쓰기</h2><p>나의 생각이 누군가에게 새로운 관점이 될 수 있어요.</p></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21} /></button></div>
     <form onSubmit={submit} className="compose-form">
-      <div className="form-two"><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} /><label>말머리<select value={category} onChange={(e) => setCategory(e.target.value)}><option>자유토론</option><option>종목분석</option><option>질문</option><option>투자아이디어</option><option>수익인증</option><option>자유게시판</option></select></label></div>
+      <div className="form-two"><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} /><label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>인기종목</option><option>종목토론</option><option>주요지수</option><option>관심종목</option><option>자유게시판</option></select></label></div>
       <label>닉네임<input required maxLength={20} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="대화에 사용할 닉네임" /></label>
       <label>제목<input required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="어떤 이야기를 나누고 싶나요?" /></label>
       <label>내용<textarea required maxLength={4000} value={content} onChange={(e) => setContent(e.target.value)} placeholder="서로의 생각을 존중하며 이야기를 나눠주세요." rows={7} /></label>
