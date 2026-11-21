@@ -41,9 +41,9 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
     onSubmit({ ticker: stock.ticker, stockName: stock.name, category, title: title.trim(), content: taggedContent, author: author.trim() });
   }
   return <Modal onClose={onClose} label="새 이야기 작성">
-    <div className="dialog-heading"><div><span className="eyebrow">SHARE YOUR THOUGHTS</span><h2>새 이야기 쓰기</h2><p>나의 생각이 누군가에게 새로운 관점이 될 수 있어요.</p></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21} /></button></div>
+    <div className="dialog-heading"><div><span className="eyebrow">SHARE YOUR THOUGHTS</span><h2>새 이야기 쓰기</h2><p>나의 생각이 누군가에게 새로운 관점이 될 수 있어요.</p><small className="compose-policy">주식과 관련 없는 이야기는 삭제될 수 있습니다.</small></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21} /></button></div>
     <form onSubmit={submit} className="compose-form">
-      <div className="form-two"><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} /><label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>인기종목</option><option>종목토론</option><option>주요지수</option><option>자유게시판</option></select></label></div>
+      <div className="form-two"><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} /><label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>종목토론</option><option>자유게시판</option></select></label></div>
       <label>닉네임<input required maxLength={20} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="대화에 사용할 닉네임" /></label>
       <label>제목<input required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="어떤 이야기를 나누고 싶나요?" /></label>
       <label>태그<input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="#질문 #수익인증처럼 입력해 보세요" maxLength={240} /><small className="tag-helper">띄어쓰기로 나누어 최대 8개까지 추가할 수 있어요.</small></label>

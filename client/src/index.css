@@ -207,3 +207,5 @@
 .tag-helper{display:block;margin-top:-2px;color:#b49a9f;font-size:9px;font-weight:500}
 .post-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
 .post-tags span{display:inline-flex;padding:4px 7px;border-radius:999px;background:#fff1f2;color:#c54e59;font-size:9px;font-weight:700;line-height:1}
+
+.compose-policy{display:block;margin-top:8px;color:#c05a64;font-size:10px;font-weight:700;letter-spacing:-.2px}
