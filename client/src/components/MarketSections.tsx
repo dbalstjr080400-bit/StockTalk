@@ -13,7 +13,7 @@ const NEWS_SOURCES: NewsSource[] = [
   { name: 'CNBC Markets', description: '미국·글로벌 시장의 주요 움직임', url: 'https://www.cnbc.com/markets/', tone: 'CNBC' },
 ];
 
-type NewsHeadline = { source: string; sourceUrl: string; ranking: string; title: string; url: string };
+type NewsHeadline = { source: string; sourceUrl: string; ranking: string; title: string; summary?: string; url: string };
 
 type IndexQuote = { price: string; change: string; positive: boolean; points: number[] };
 const INDEX_QUOTES: Record<string, IndexQuote> = {
@@ -61,7 +61,7 @@ export function NewsSection() {
         <span className="news-ranking-note">{sourceHeadlines[0]?.ranking ?? (source.name === '네이버 증권' || source.name === '다음 금융' ? '많이 본 뉴스' : '공식 뉴스')}</span>
         {loading && <p className="news-loading">헤드라인을 불러오는 중입니다…</p>}
         {!loading && sourceHeadlines.length === 0 && <a className="market-card-link" href={source.url} target="_blank" rel="noopener noreferrer">공식 뉴스 보기 <ExternalLink size={13} /></a>}
-        {!loading && sourceHeadlines.length > 0 && <ol className="news-headline-list">{sourceHeadlines.map((item, index) => <li key={`${item.url}-${index}`}><a href={item.url} target="_blank" rel="noopener noreferrer"><span>{index + 1}</span>{item.title}<ExternalLink size={13} /></a></li>)}</ol>}
+        {!loading && sourceHeadlines.length > 0 && <ol className="news-headline-list">{sourceHeadlines.map((item, index) => <li key={`${item.url}-${index}`}><a href={item.url} target="_blank" rel="noopener noreferrer"><span>{index + 1}</span><strong>{item.title}</strong><ExternalLink size={13} />{item.summary && <small>{item.summary}</small>}</a></li>)}</ol>}
       </article>;
     })}</div>
   </section>;

@@ -10,6 +10,7 @@ export type NewsHeadline = {
   sourceUrl: string;
   ranking: string;
   title: string;
+  summary?: string;
   url: string;
 };
 
@@ -41,7 +42,11 @@ function extractHeadlines(html: string, config: NewsSourceConfig) {
   const linkPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(linkPattern)) {
     const rawHref = match[1];
-    const title = cleanText(match[2]);
+    const anchorHtml = match[2];
+    const headingMatch = anchorHtml.match(/<(?:h[1-6]|strong)\b[^>]*>([\s\S]*?)<\/(?:h[1-6]|strong)>/i);
+    const summaryMatch = anchorHtml.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
+    const title = cleanText(headingMatch?.[1] ?? anchorHtml);
+    const summary = cleanText(summaryMatch?.[1] ?? "");
     let url: string;
     try { url = new URL(rawHref, config.url).toString(); } catch { continue; }
     if (!rawHref || !config.match(url) || title.length < 12 || title.length > 240) continue;
@@ -50,7 +55,7 @@ function extractHeadlines(html: string, config: NewsSourceConfig) {
     const key = `${config.source}:${url}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    items.push({ source: config.source, sourceUrl: config.url, ranking: config.ranking, title, url });
+    items.push({ source: config.source, sourceUrl: config.url, ranking: config.ranking, title, summary: summary && summary !== title ? summary.slice(0, 260) : undefined, url });
     if (items.length >= 6) break;
   }
   return items;
