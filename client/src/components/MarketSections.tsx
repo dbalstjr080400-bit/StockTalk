@@ -39,6 +39,7 @@ function IndexMiniChart({ points, positive }: Pick<IndexQuote, 'points' | 'posit
 export function NewsSection() {
   const [headlines, setHeadlines] = useState<NewsHeadline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSource, setActiveSource] = useState(NEWS_SOURCES[0].name);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +53,8 @@ export function NewsSection() {
 
   return <section className="market-content" aria-label="주요뉴스 목록">
     <div className="market-source-note"><Newspaper size={17} /><span>헤드라인만 공식 페이지에서 수집합니다. 제목을 누르면 각 언론사의 원문으로 이동합니다.</span></div>
-    <div className="news-source-grid">{NEWS_SOURCES.map((source) => {
+    <nav className="news-publisher-tabs" aria-label="뉴스 언론사 선택">{NEWS_SOURCES.map((source) => <button type="button" key={source.name} className={activeSource === source.name ? 'active' : ''} onClick={() => setActiveSource(source.name)}>{source.tone}</button>)}</nav>
+    <div className="news-source-grid">{NEWS_SOURCES.filter(source => source.name === activeSource).map((source) => {
       const sourceHeadlines = headlines.filter(item => item.source === source.name);
       return <article className="news-source-card" key={source.name}>
         <a className="news-source-heading" href={source.url} target="_blank" rel="noopener noreferrer"><span className="market-card-kicker">{source.tone}</span><strong>{source.name}</strong><p>{source.description}</p></a>

@@ -264,3 +264,13 @@
 .news-loading,.news-headline-list,.news-source-card>.market-card-link{grid-column:2}
 .news-headline-list{margin-top:0}
 @media(max-width:700px){.news-source-card{display:flex;flex-direction:column;gap:8px}.news-source-heading{width:100%;padding:0 0 9px;border-right:0;border-bottom:1px solid #f1dfe1}.news-ranking-note,.news-loading,.news-headline-list,.news-source-card>.market-card-link{width:100%}}
+
+
+/* Publisher selector shown above the major-news feed */
+.news-publisher-tabs{display:flex;align-items:center;gap:0;overflow-x:auto;border:1px solid #f0d5d8;border-radius:10px;background:#fffafa;scrollbar-width:none}
+.news-publisher-tabs::-webkit-scrollbar{display:none}
+.news-publisher-tabs button{flex:1;min-width:88px;padding:12px 16px;border-right:1px solid #f1dfe1;color:#a87980;font-family:'Noto Sans KR',Arial,sans-serif;font-size:11px;font-weight:800;white-space:nowrap}
+.news-publisher-tabs button:last-child{border-right:0}
+.news-publisher-tabs button:hover{color:#b82c39;background:#fff0f1}
+.news-publisher-tabs button.active{color:#fff;background:#d83d4b}
+@media(max-width:700px){.news-publisher-tabs button{min-width:76px;padding:11px 12px;font-size:10px}}
