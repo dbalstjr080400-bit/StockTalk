@@ -93,7 +93,15 @@ export default function Home() {
   const reportPost = trpc.discussion.report.useMutation({ onSuccess: () => toast.success('신고가 접수되었어요.'), onError: (error) => toast.error(error.message || '신고를 접수하지 못했어요.') });
   const like = trpc.discussion.toggleLike.useMutation({ onSuccess: () => { void posts.refetch(); }, onError: () => toast.error('공감을 표시하지 못했어요. 다시 시도해 주세요.') });
   const view = trpc.discussion.incrementViews.useMutation({ onSuccess: () => { void posts.refetch(); } });
-  function updateNickname(name: string) { setNickname(name); localStorage.setItem('moa-name', JSON.stringify(name)); }
+  function updateNickname(name: string) {
+    setNickname(name);
+    localStorage.setItem('moa-name', JSON.stringify(name));
+    const trimmed = name.trim();
+    if (trimmed) {
+      const names = saved<string[]>('moa-author-names', []);
+      if (!names.includes(trimmed)) localStorage.setItem('moa-author-names', JSON.stringify([...names, trimmed]));
+    }
+  }
   function saveProfile() {
     const nextNickname = nickname.trim() || auth.user?.name?.trim() || '';
     const nextId = profileId.trim() || auth.user?.email?.trim() || '';
@@ -141,7 +149,11 @@ export default function Home() {
   const currentThread = thread ? (posts.data?.find((post) => post.id === thread.id) ?? thread) : null;
   const currentUserName = auth.user?.name?.trim() || nickname.trim();
   const displayProfileId = profileId || auth.user?.email || '';
-  const myPosts = useMemo(() => currentUserName ? (posts.data ?? []).filter((post) => post.author === currentUserName) : [], [currentUserName, posts.data]);
+  const authorNames = useMemo(() => {
+    const names = saved<string[]>('moa-author-names', []);
+    return new Set([auth.user?.name?.trim(), nickname.trim(), ...names].filter(Boolean));
+  }, [auth.user?.name, nickname]);
+  const myPosts = useMemo(() => authorNames.size ? (posts.data ?? []).filter((post) => authorNames.has(post.author)) : [], [authorNames, posts.data]);
   const likedPosts = useMemo(() => (posts.data ?? []).filter((post) => post.liked), [posts.data]);
   const indexStocks = useMemo(() => MARKET_INDICES.map((index) => stockFromDirectory({ symbol: index.ticker, name: index.name, englishName: index.englishName, market: index.market, type: 'INDEX' })), []);
   const indexByTicker = useMemo(() => new Map(MARKET_INDICES.map((index) => [index.ticker, index])), []);
