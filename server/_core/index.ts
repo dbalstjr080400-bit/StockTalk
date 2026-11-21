@@ -5,6 +5,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
+import { getStockDirectory } from "../stocks";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -15,6 +16,14 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/stocks", async (_req, res) => {
+    try {
+      const directory = await getStockDirectory();
+      res.set("Cache-Control", "no-store").json(directory);
+    } catch {
+      res.status(503).json({ error: "종목 목록을 불러오지 못했습니다." });
+    }
+  });
   app.get("/api/platform/config.js", (_req, res) => {
     res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
   });
