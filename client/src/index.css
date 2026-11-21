@@ -184,3 +184,7 @@
 
 /* Only the popular-stock title typography */
 .popular-page-toolbar h3{font-family:'Noto Sans KR',Arial,sans-serif;font-weight:700;letter-spacing:-.45px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+/* Hourly refresh note for popular discussion sorting */
+.popular-refresh-note{font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;color:#a47b80;white-space:nowrap;letter-spacing:-.2px}
+@media(max-width:700px){.popular-refresh-note{font-size:9px}}
