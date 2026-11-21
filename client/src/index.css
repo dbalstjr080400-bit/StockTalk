@@ -123,3 +123,10 @@
 .explore-search input{width:100%;min-width:0;border:0;background:transparent;color:#6f4d52;font-size:11px;font-weight:500;line-height:1.5}
 .explore-search input::placeholder{color:#b08b90;font-size:11px;font-weight:500;opacity:1}
 .explore-search:focus-within{border-color:#d83d4b;box-shadow:0 0 0 3px #d83d4b12}
+
+
+/* Popular-stock visit period filters */
+.popular-period-tabs{display:flex;gap:4px;margin-top:14px;padding-bottom:11px;border-bottom:1px solid #f0f2f5}
+.popular-period-tabs button{flex:1;padding:6px 3px;border:1px solid #f0dfe1;border-radius:5px;background:#fff;color:#a07a80;font-family:'Noto Sans KR',Arial,sans-serif;font-size:9px;font-weight:700;white-space:nowrap}
+.popular-period-tabs button.active{border-color:#d83d4b;background:#d83d4b;color:#fff}
+.rank-stock-views{color:#d83d4b!important;font-weight:800!important}

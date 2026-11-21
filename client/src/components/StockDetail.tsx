@@ -273,7 +273,7 @@ function StockDetailContent({ stock, posts, onBack, onLike, onComments, onWrite,
 
     <section className="sd-board" aria-labelledby="sd-board-heading">
       <div className="sd-board-heading">
-        <div><span className="sd-eyebrow">COMMUNITY</span><h2 id="sd-board-heading">{stock.name} 이야기 <span>{countFormatter.format(posts.length)}</span></h2><p>이 종목에 관해 나눈 이야기를 모았어요.{demoCount > 0 && ` 예시 글 ${countFormatter.format(demoCount)}개가 포함되어 있어요.`}</p></div>
+        <div><span className="sd-eyebrow">COMMUNITY</span><h2 id="sd-board-heading">{stock.name} <span>{countFormatter.format(posts.length)}</span></h2><p>이 종목에 관해 나눈 이야기를 모았어요.{demoCount > 0 && ` 예시 글 ${countFormatter.format(demoCount)}개가 포함되어 있어요.`}</p></div>
         <button type="button" className="sd-write" onClick={onWrite}><PenLine size={14} /> 글쓰기</button>
       </div>
       {posts.length ? <>

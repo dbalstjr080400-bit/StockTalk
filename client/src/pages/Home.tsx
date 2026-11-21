@@ -14,6 +14,7 @@ import { IndexSection, NewsSection } from '@/components/MarketSections';
 import { MARKET_INDICES, isMarketIndex } from '@shared/marketIndices';
 
 type Section = 'feed' | 'hot' | 'watch' | 'stocks' | 'news' | 'indices' | 'profit' | 'free' | 'me';
+type PopularPeriod = 'all' | 'month' | 'week' | 'day';
 function saved<T>(key: string, fallback: T): T { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } }
 function visitor(): string { const existing = localStorage.getItem('moa-visitor'); if (existing) return existing; const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; localStorage.setItem('moa-visitor', id); return id; }
 
@@ -25,7 +26,8 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [watch, setWatch] = useState<string[]>(() => saved('moa-watch', ['005930', '000660', 'NVDA']));
-  const [stockViews, setStockViews] = useState<Record<string, number>>(() => saved('moa-stock-views', {}));
+  const [stockVisits, setStockVisits] = useState<Record<string, number[]>>(() => saved('moa-stock-visits-v2', {}));
+  const [popularPeriod, setPopularPeriod] = useState<PopularPeriod>('all');
   const [nickname, setNickname] = useState(() => saved('moa-name', ''));
   const [visitorId] = useState(visitor);
   const [compose, setCompose] = useState(false);
@@ -48,6 +50,9 @@ export default function Home() {
   const stockIndex = useMemo(() => new Map(apiStocks.map((stock) => [stock.ticker, stock])), [apiStocks]);
   const posts = trpc.discussion.list.useQuery({ visitorId }, { refetchOnWindowFocus: true, refetchInterval: 30_000 });
   const popularStocks = useMemo(() => {
+    const now = Date.now();
+    const periodMs = popularPeriod === 'day' ? 24 * 60 * 60 * 1000 : popularPeriod === 'week' ? 7 * 24 * 60 * 60 * 1000 : popularPeriod === 'month' ? 30 * 24 * 60 * 60 * 1000 : Infinity;
+    const visitsFor = (ticker: string) => (stockVisits[ticker] ?? []).filter((timestamp) => periodMs === Infinity || now - timestamp <= periodMs).length;
     const stats = new Map<string, { posts: number; views: number }>();
     for (const post of posts.data ?? []) {
       const current = stats.get(post.ticker) ?? { posts: 0, views: 0 };
@@ -57,10 +62,10 @@ export default function Home() {
     }
     const candidates = [...STOCKS, ...apiStocks.filter((stock) => stats.has(stock.ticker) && !STOCKS.some((example) => example.ticker === stock.ticker))];
     return candidates
-      .map((stock, index) => ({ stock: stockIndex.get(stock.ticker) ?? stock, index, stats: stats.get(stock.ticker) ?? { posts: 0, views: 0 }, visits: stockViews[stock.ticker] ?? 0 }))
+      .map((stock, index) => ({ stock: stockIndex.get(stock.ticker) ?? stock, index, stats: stats.get(stock.ticker) ?? { posts: 0, views: 0 }, visits: visitsFor(stock.ticker) }))
       .sort((a, b) => b.visits - a.visits || b.stats.posts - a.stats.posts || b.stats.views - a.stats.views || a.index - b.index)
       .map(({ stock }) => stock);
-  }, [apiStocks, posts.data, stockIndex, stockViews]);
+  }, [apiStocks, posts.data, popularPeriod, stockIndex, stockVisits]);
   const orderedStocks = useMemo(() => {
     const pinned = popularStocks.filter((stock) => stockIndex.get(stock.ticker) === stock);
     const pinnedSet = new Set(pinned);
@@ -73,7 +78,7 @@ export default function Home() {
   function updateNickname(name: string) { setNickname(name); localStorage.setItem('moa-name', JSON.stringify(name)); }
   function toggleWatch(id: string) { setWatch((current) => { const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]; localStorage.setItem('moa-watch', JSON.stringify(next)); return next; }); }
   function selectSection(next: Section) { setSection(next); setTicker('all'); setSelectedIndexTicker(null); setSearch(''); setStockSearch(''); setMobileMenu(false); if (next === 'hot') setSort('popular'); if (next === 'feed') setSort('recent'); }
-  function selectStock(id: string) { setStockViews((current) => { const next = { ...current, [id]: (current[id] ?? 0) + 1 }; localStorage.setItem('moa-stock-views', JSON.stringify(next)); return next; }); setTicker(id); setSection('feed'); setMobileMenu(false); setSearch(''); }
+  function selectStock(id: string) { setStockVisits((current) => { const next = { ...current, [id]: [...(current[id] ?? []), Date.now()] }; localStorage.setItem('moa-stock-visits-v2', JSON.stringify(next)); return next; }); setTicker(id); setSection('feed'); setMobileMenu(false); setSearch(''); }
   function selectIndex(id: string) { setSelectedIndexTicker(id); setSection('indices'); setTicker('all'); setSearch(''); setMobileMenu(false); }
   function openThread(post: Post) { view.mutate({ postId: post.id }); setThread(post); }
   function login() { try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
@@ -98,6 +103,11 @@ export default function Home() {
   const indexByTicker = useMemo(() => new Map(MARKET_INDICES.map((index) => [index.ticker, index])), []);
   const selectedIndex = selectedIndexTicker ? indexByTicker.get(selectedIndexTicker) : undefined;
   const selectedIndexPosts = selectedIndex ? (posts.data ?? []).filter((post) => post.ticker === selectedIndex.ticker).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [];
+  function visitCount(ticker: string) {
+    const now = Date.now();
+    const periodMs = popularPeriod === 'day' ? 24 * 60 * 60 * 1000 : popularPeriod === 'week' ? 7 * 24 * 60 * 60 * 1000 : popularPeriod === 'month' ? 30 * 24 * 60 * 60 * 1000 : Infinity;
+    return (stockVisits[ticker] ?? []).filter((timestamp) => periodMs === Infinity || now - timestamp <= periodMs).length;
+  }
   const composeStock = selectedIndex ? indexStocks.find((stock) => stock.ticker === selectedIndex.ticker) : selectedStock;
   const sidebarLinks: { id: Section; text: string; icon: typeof HomeIcon }[] = [
     { id: 'feed', text: '전체 피드', icon: HomeIcon }, { id: 'hot', text: '인기 토론', icon: Flame }, { id: 'watch', text: '관심 종목', icon: Bookmark }, { id: 'stocks', text: '종목 둘러보기', icon: Compass },
@@ -135,7 +145,7 @@ export default function Home() {
           <div className="feed-end">서로 다른 생각이 모여 더 좋은 대화가 됩니다. <span>✳</span></div>
         </>}
       </main>
-      <aside className="right-sidebar"><div className="right-card popular-card"><div className="right-card-title"><div><span className="section-kicker"><span /> STOCK DISCOVERY</span><h3>눈여겨볼 종목 <span>✳</span></h3></div><button onClick={() => selectSection('stocks')} aria-label="전체 종목 보기"><ArrowUpRight size={18} /></button></div><p className="right-card-subtitle">종목 상세에 들어간 조회수 순으로 보여드려요.</p><div className="ranking-list">{popularStocks.map((stock, i) => <div className="ranking-row" key={stock.ticker}><span className="rank-number">{String(i + 1).padStart(2, '0')}</span><button className="rank-stock" onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span><strong>{stock.name}</strong><small>{stock.ticker} · 조회 {stockViews[stock.ticker] ?? 0}</small></span></button><WatchStar active={watch.includes(stock.ticker)} name={stock.name} onClick={() => toggleWatch(stock.ticker)} /></div>)}</div><button className="card-link" onClick={() => selectSection('stocks')}>종목 전체보기 <ArrowRight size={14} /></button></div>
+      <aside className="right-sidebar"><div className="right-card popular-card"><div className="right-card-title"><div><span className="section-kicker"><span /> STOCK DISCOVERY</span><h3>눈여겨볼 종목 <span>✳</span></h3></div><button onClick={() => selectSection('stocks')} aria-label="전체 종목 보기"><ArrowUpRight size={18} /></button></div><p className="right-card-subtitle">종목 상세 진입 조회수 순으로 보여드려요.</p><div className="popular-period-tabs" role="tablist" aria-label="인기종목 조회 기간">{([['all', '전체'], ['month', '1개월'], ['week', '1주'], ['day', '1일']] as const).map(([value, label]) => <button key={value} type="button" className={popularPeriod === value ? 'active' : ''} onClick={() => setPopularPeriod(value)}>{label}</button>)}</div><div className="ranking-list">{popularStocks.map((stock, i) => <div className="ranking-row" key={stock.ticker}><span className="rank-number">{String(i + 1).padStart(2, '0')}</span><button className="rank-stock" onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span><strong>{stock.name}</strong><small>{stock.ticker}</small><small className="rank-stock-views">조회수 {visitCount(stock.ticker).toLocaleString('ko-KR')}회</small></span></button><WatchStar active={watch.includes(stock.ticker)} name={stock.name} onClick={() => toggleWatch(stock.ticker)} /></div>)}</div><button className="card-link" onClick={() => selectSection('stocks')}>종목 전체보기 <ArrowRight size={14} /></button></div>
         <div className="right-card insight-card"><div className="insight-icon"><Lightbulb size={18} /></div><span className="insight-label">MOA NOTE</span><h3>투자의 시작은<br />좋은 질문 하나부터.</h3><p>궁금한 점이 있다면 편하게 물어보세요. 서로 다른 생각이 새로운 힌트가 될 거예요.</p><button onClick={() => setCompose(true)}>질문하러 가기 <ArrowRight size={15} /></button><div className="insight-decoration">✳</div></div>
         <div className="community-note"><ShieldCheck size={17} /><div><strong>서로를 존중하는 투자 대화</strong><p>모아의 게시글은 투자 권유가 아니며, 투자 판단과 책임은 본인에게 있습니다.</p></div></div>
         <div className="right-card my-page-banner"><div className="my-banner-icon"><Menu size={17} /></div><span className="insight-label">모아 둘러보기</span><h3>나의 투자 활동을<br />한눈에 확인해요.</h3><p>회원정보와 내가 쓴 글, 공감한 글을 모아볼 수 있어요.</p><button onClick={() => selectSection('me')}>마이 페이지 <ArrowRight size={15} /></button></div>
