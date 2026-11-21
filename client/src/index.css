@@ -71,3 +71,19 @@
 .my-page-banner p{font-size:10px;line-height:1.7;color:#ad7b81;margin-top:8px}
 .my-page-banner button{display:flex;align-items:center;gap:7px;font-weight:800;color:#c33240;font-size:10px;margin-top:12px;padding:0}
 @media(max-width:700px){.my-profile-card{padding:18px 16px}.my-profile-card h3{font-size:16px}.my-stats{gap:7px}.my-stats div{padding:14px 5px}}
+
+
+/* Index quotes and ranking typography */
+.index-quote{width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:7px 0 2px;padding:10px 0 8px;border-top:1px solid #f6e5e6;border-bottom:1px solid #f6e5e6}
+.index-quote>div{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.index-quote b{font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:17px;line-height:1;color:#442d31;letter-spacing:-.3px}
+.index-quote em{font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:11px;font-style:normal;font-weight:800}
+.index-quote em.up{color:#d83d4b}
+.index-quote em.down{color:#557fc0}
+.index-mini-chart{width:116px;height:34px;flex:none}
+.index-mini-chart.positive{color:#d83d4b}
+.index-mini-chart.negative{color:#557fc0}
+.ranking-list,.ranking-row,.rank-stock,.rank-stock strong,.rank-stock small{font-family:'Noto Sans KR','DM Sans',sans-serif;font-synthesis:none;word-break:keep-all}
+.rank-stock strong{line-height:1.35;letter-spacing:-.25px}
+.rank-stock small{line-height:1.2;letter-spacing:0}
+@media(max-width:700px){.index-quote b{font-size:15px}.index-mini-chart{width:96px}}
