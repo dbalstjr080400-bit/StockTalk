@@ -274,3 +274,12 @@
 .news-publisher-tabs button:hover{color:#b82c39;background:#fff0f1}
 .news-publisher-tabs button.active{color:#fff;background:#d83d4b}
 @media(max-width:700px){.news-publisher-tabs button{min-width:76px;padding:11px 12px;font-size:10px}}
+
+
+/* Empty watchlist state */
+.watch-empty-state{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:28px 18px;border:1px solid #f0d5d8;border-radius:10px;background:#fffafa;color:#b08b90;font-family:'Noto Sans KR',Arial,sans-serif;text-align:center}
+.watch-empty-state svg{color:#d83d4b}
+.watch-empty-state strong{color:#7d3b43;font-size:14px;font-weight:800;letter-spacing:-.35px}
+.watch-empty-state span{color:#a47b80;font-size:11px;font-weight:500}
+.watch-empty-state button{display:flex;align-items:center;gap:5px;margin-top:5px;color:#d83d4b;font-size:11px;font-weight:800}
+.watch-empty-state button:hover{color:#b82c39}
