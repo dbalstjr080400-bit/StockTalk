@@ -1,10 +1,38 @@
 import { COOKIE_NAME } from "@shared/const";
+import { STOCK_NAMES } from "@shared/stockCatalog";
+import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { limitedDiscussionWrite } from "./_core/discussionRateLimit";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import {
+  addDiscussionComment,
+  createDiscussionPost,
+  getDiscussionComments,
+  listDiscussionPosts,
+  toggleDiscussionLike,
+} from "./db";
+
+const postId = z.number().int().positive().max(2147483647);
+const plainText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(max)
+    .refine(
+      value => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value),
+      "제어 문자는 사용할 수 없습니다."
+    );
+const singleLine = (max: number) =>
+  plainText(max).refine(
+    value => !/[\r\n\t]/.test(value),
+    "한 줄로 입력해 주세요."
+  );
+const visitorId = singleLine(128);
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -17,12 +45,43 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  discussion: router({
+    list: publicProcedure
+      .input(z.object({ visitorId: visitorId.optional() }).optional())
+      .query(({ input }) => listDiscussionPosts(input?.visitorId)),
+    create: limitedDiscussionWrite
+      .input(
+        z.object({
+          ticker: singleLine(32).regex(
+            /^[A-Za-z0-9._-]+$/,
+            "올바른 종목 코드를 입력해 주세요."
+          ),
+          stockName: singleLine(100),
+          category: singleLine(30),
+          title: singleLine(120),
+          content: plainText(5000),
+          author: singleLine(40),
+        }).superRefine((value, ctx) => {
+          if (!Object.hasOwn(STOCK_NAMES, value.ticker) || STOCK_NAMES[value.ticker] !== value.stockName) {
+            ctx.addIssue({ code: "custom", path: ["ticker"], message: "등록된 종목 코드와 이름을 선택해 주세요." });
+          }
+        })
+      )
+      .mutation(({ input }) => createDiscussionPost(input)),
+    toggleLike: limitedDiscussionWrite
+      .input(z.object({ postId, visitorId }))
+      .mutation(({ input }) =>
+        toggleDiscussionLike(input.postId, input.visitorId)
+      ),
+    comments: publicProcedure
+      .input(z.object({ postId }))
+      .query(({ input }) => getDiscussionComments(input.postId)),
+    addComment: limitedDiscussionWrite
+      .input(
+        z.object({ postId, author: singleLine(40), content: plainText(1000) })
+      )
+      .mutation(({ input }) => addDiscussionComment(input)),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
