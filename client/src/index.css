@@ -161,3 +161,23 @@
 .explore-pagination button:disabled{border-color:#f1e6e7;background:#fafafa;color:#c9b8ba;opacity:1}
 .explore-pagination span{min-width:82px;text-align:center;font-size:10px;line-height:30px}
 .explore-pagination span strong{color:#7d3b43;font-size:11px;font-weight:800}
+
+/* Compose dialog: symmetric stock and topic fields */
+.compose-form .form-two{align-items:start}
+.compose-form .form-two>label,
+.compose-form .form-two>.stock-picker{display:flex;flex-direction:column;gap:7px;min-width:0;font-family:'Noto Sans KR',Arial,sans-serif}
+.compose-form .form-two>.stock-picker>label{display:block;height:16px;font-family:'Noto Sans KR',Arial,sans-serif;font-size:11px;font-weight:800;line-height:16px;color:#677385}
+.compose-form .form-two>.stock-picker>input,
+.compose-form .form-two>label>select{height:40px;min-height:40px;box-sizing:border-box;margin:0;font-family:'Noto Sans KR',Arial,sans-serif;line-height:1.2}
+.compose-form .form-two>label>select{appearance:auto;padding-top:0;padding-bottom:0}
+.stock-picker{position:relative}
+.stock-picker-menu{position:absolute;z-index:120;top:63px;left:0;right:0;max-height:260px;overflow:auto;border:1px solid #e8ecf2;border-radius:8px;background:#fff;box-shadow:0 12px 30px #17233d18}
+.picker-caption{padding:10px 12px;color:#9ba6b4;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;line-height:1.5}
+.picker-option{display:flex;width:100%;align-items:center;gap:8px;padding:8px 10px;text-align:left;font-family:'Noto Sans KR',Arial,sans-serif}
+.picker-option:hover,.picker-option.active{background:#fff0f1}
+.picker-option>span:last-child{display:flex;min-width:0;flex-direction:column;gap:2px}
+.picker-option strong{font-size:11px;color:#526073;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker-option small{font-size:9px;color:#a4aebb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker-hint,.picker-error{display:block;margin-top:2px;color:#a9b2bf;font-family:'Noto Sans KR',Arial,sans-serif;font-size:9px;line-height:1.4}
+.picker-error{color:#bf6d75}
+@media(max-width:700px){.compose-form .form-two{grid-template-columns:1fr}.stock-picker-menu{top:63px}}
