@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, BarChart3, ExternalLink, MessageCircle, Newspaper, Plus, X } from 'lucide-react';
 import { PostCard, StockIcon, type Post } from './CommunityParts';
 import type { Stock } from '@/lib/stocks';
@@ -12,6 +12,8 @@ const NEWS_SOURCES: NewsSource[] = [
   { name: 'Yahoo Finance', description: '미국 시장·지수·기업 뉴스와 시세', url: 'https://finance.yahoo.com/news/', tone: 'YAHOO' },
   { name: 'CNBC Markets', description: '미국·글로벌 시장의 주요 움직임', url: 'https://www.cnbc.com/markets/', tone: 'CNBC' },
 ];
+
+type NewsHeadline = { source: string; sourceUrl: string; ranking: string; title: string; url: string };
 
 type IndexQuote = { price: string; change: string; positive: boolean; points: number[] };
 const INDEX_QUOTES: Record<string, IndexQuote> = {
@@ -35,11 +37,31 @@ function IndexMiniChart({ points, positive }: Pick<IndexQuote, 'points' | 'posit
 }
 
 export function NewsSection() {
+  const [headlines, setHeadlines] = useState<NewsHeadline[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/news')
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('news request failed')))
+      .then(payload => { if (active) setHeadlines(payload.headlines ?? []); })
+      .catch(() => { if (active) setHeadlines([]); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
   return <section className="market-content" aria-label="주요뉴스 목록">
-    <div className="market-source-note"><Newspaper size={17} /><span>기사 원문과 최신 업데이트는 각 언론사 공식 페이지에서 확인하세요.</span></div>
-    <div className="news-source-grid">{NEWS_SOURCES.map((source) => <a className="news-source-card" href={source.url} target="_blank" rel="noopener noreferrer" key={source.name}>
-      <span className="market-card-kicker">{source.tone}</span><strong>{source.name}</strong><p>{source.description}</p><span className="market-card-link">공식 뉴스 보기 <ExternalLink size={13} /></span>
-    </a>)}</div>
+    <div className="market-source-note"><Newspaper size={17} /><span>헤드라인만 공식 페이지에서 수집합니다. 제목을 누르면 각 언론사의 원문으로 이동합니다.</span></div>
+    <div className="news-source-grid">{NEWS_SOURCES.map((source) => {
+      const sourceHeadlines = headlines.filter(item => item.source === source.name);
+      return <article className="news-source-card" key={source.name}>
+        <a className="news-source-heading" href={source.url} target="_blank" rel="noopener noreferrer"><span className="market-card-kicker">{source.tone}</span><strong>{source.name}</strong><p>{source.description}</p></a>
+        <span className="news-ranking-note">{sourceHeadlines[0]?.ranking ?? (source.name === '네이버 증권' || source.name === '다음 금융' ? '많이 본 뉴스' : '공식 뉴스')}</span>
+        {loading && <p className="news-loading">헤드라인을 불러오는 중입니다…</p>}
+        {!loading && sourceHeadlines.length === 0 && <a className="market-card-link" href={source.url} target="_blank" rel="noopener noreferrer">공식 뉴스 보기 <ExternalLink size={13} /></a>}
+        {!loading && sourceHeadlines.length > 0 && <ol className="news-headline-list">{sourceHeadlines.map((item, index) => <li key={`${item.url}-${index}`}><a href={item.url} target="_blank" rel="noopener noreferrer"><span>{index + 1}</span>{item.title}<ExternalLink size={13} /></a></li>)}</ol>}
+      </article>;
+    })}</div>
   </section>;
 }
 

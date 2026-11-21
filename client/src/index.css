@@ -239,3 +239,28 @@
 .index-sort-tabs button,.index-period-tabs button{padding:7px 11px;border:1px solid #eadcdf;border-radius:6px;background:#fff;color:#9b777c;font-size:10px;font-weight:800}
 .index-sort-tabs button.active,.index-period-tabs button.active{border-color:#d83d4b;background:#d83d4b;color:#fff}
 @media(max-width:700px){.index-board-sort{align-items:flex-start;flex-direction:column}.index-period-tabs{width:100%}.index-period-tabs button{flex:1}}
+
+
+/* Live headline cards: titles only, with links to the original publisher */
+.news-source-card{gap:8px}
+.news-source-heading{display:flex;flex-direction:column;gap:7px;color:inherit;text-decoration:none}
+.news-source-heading:hover strong{color:#b82c39}
+.news-ranking-note{display:block;color:#b06d75;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:-.1px}
+.news-loading{color:#b08b90!important;font-size:11px!important}
+.news-headline-list{display:flex;flex-direction:column;gap:8px;margin:2px 0 0;padding:10px 0 0;border-top:1px solid #f4e0e2;list-style:none}
+.news-headline-list li{min-width:0}
+.news-headline-list a{display:grid;grid-template-columns:17px minmax(0,1fr) 13px;align-items:start;gap:6px;color:#65494e;font-family:'Noto Sans KR',Arial,sans-serif;font-size:11px;font-weight:600;line-height:1.45;text-decoration:none}
+.news-headline-list a:hover{color:#d83d4b}
+.news-headline-list a>span{color:#d83d4b;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:800;text-align:center}
+.news-headline-list a>svg{margin-top:2px;color:#d89aa1}
+@media(max-width:700px){.news-headline-list a{font-size:10.5px}}
+
+
+/* Separate each publisher into its own full-width news bar */
+.news-source-grid{grid-template-columns:1fr}
+.news-source-card{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);align-items:start;column-gap:18px;row-gap:7px;padding:15px 17px}
+.news-source-heading{padding-right:16px;border-right:1px solid #f1dfe1}
+.news-ranking-note{grid-column:2;grid-row:1;margin-top:1px}
+.news-loading,.news-headline-list,.news-source-card>.market-card-link{grid-column:2}
+.news-headline-list{margin-top:0}
+@media(max-width:700px){.news-source-card{display:flex;flex-direction:column;gap:8px}.news-source-heading{width:100%;padding:0 0 9px;border-right:0;border-bottom:1px solid #f1dfe1}.news-ranking-note,.news-loading,.news-headline-list,.news-source-card>.market-card-link{width:100%}}

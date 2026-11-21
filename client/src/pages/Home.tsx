@@ -144,7 +144,7 @@ export default function Home() {
     { id: 'feed', text: '전체 피드', icon: HomeIcon }, { id: 'hot', text: '인기 토론', icon: Flame }, { id: 'watch', text: '관심 종목', icon: Bookmark }, { id: 'stocks', text: '종목 둘러보기', icon: Compass },
   ];
   const mainLinks: { id: Section; text: string }[] = [
-    { id: 'stocks', text: '인기종목' }, { id: 'feed', text: '종목토론' }, { id: 'news', text: '주요뉴스' }, { id: 'indices', text: '주요지수' }, { id: 'watch', text: '관심종목' }, { id: 'free', text: '자유게시판' },
+    { id: 'stocks', text: '인기종목' }, { id: 'feed', text: '종목토론' }, { id: 'free', text: '자유게시판' }, { id: 'indices', text: '주요지수' }, { id: 'watch', text: '관심종목' }, { id: 'news', text: '주요뉴스' },
   ];
   const heading = section === 'stocks' ? '종목 둘러보기' : section === 'watch' ? '내 관심 종목 이야기' : section === 'hot' ? '지금 주목하는 이야기' : section === 'news' ? '주요뉴스' : section === 'indices' ? '주요지수' : section === 'profit' ? '수익인증' : section === 'free' ? '자유게시판' : selectedStock ? `${selectedStock.name} 이야기` : '살까, 팔까?';
   return <div className="app-shell">
