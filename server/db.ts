@@ -188,11 +188,38 @@ export async function deleteDiscussionPost(postId: number, author: string) {
   return { success: true } as const;
 }
 
-export async function reportDiscussionPost(input: { postId: number; reporter: string; reason: string }) {
+export async function reportDiscussionPost(input: { postId: number; commentId?: number; reporter: string; reason: string }) {
   const db = await requireDb();
   const [post] = await db.select({ id: discussionPosts.id }).from(discussionPosts).where(eq(discussionPosts.id, input.postId)).limit(1);
   if (!post) throw new TRPCError({ code: "NOT_FOUND", message: "게시글을 찾을 수 없습니다." });
   await db.insert(discussionReports).values(input);
+  return { success: true } as const;
+}
+
+export async function getAdminSnapshot() {
+  const db = await requireDb();
+  const [reports, members, posts] = await Promise.all([
+    db.select({ id: discussionReports.id, postId: discussionReports.postId, commentId: discussionReports.commentId, reporter: discussionReports.reporter, reason: discussionReports.reason, createdAt: discussionReports.createdAt, postTitle: discussionPosts.title }).from(discussionReports).leftJoin(discussionPosts, eq(discussionReports.postId, discussionPosts.id)).orderBy(desc(discussionReports.createdAt)).limit(100),
+    db.select({ id: users.id, openId: users.openId, name: users.name, email: users.email, role: users.role, isSuspended: users.isSuspended, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn }).from(users).orderBy(desc(users.createdAt)).limit(200),
+    db.select({ id: discussionPosts.id, title: discussionPosts.title, author: discussionPosts.author, category: discussionPosts.category, createdAt: discussionPosts.createdAt }).from(discussionPosts).orderBy(desc(discussionPosts.createdAt)).limit(100),
+  ]);
+  return { reports, members, posts };
+}
+
+export async function adminDeleteDiscussionPost(postId: number) {
+  const db = await requireDb();
+  await db.transaction(async tx => {
+    await tx.delete(discussionComments).where(eq(discussionComments.postId, postId));
+    await tx.delete(discussionLikes).where(eq(discussionLikes.postId, postId));
+    await tx.delete(discussionReports).where(eq(discussionReports.postId, postId));
+    await tx.delete(discussionPosts).where(eq(discussionPosts.id, postId));
+  });
+  return { success: true } as const;
+}
+
+export async function setUserSuspended(userId: number, suspended: boolean) {
+  const db = await requireDb();
+  await db.update(users).set({ isSuspended: suspended }).where(eq(users.id, userId));
   return { success: true } as const;
 }
 
@@ -272,6 +299,7 @@ export async function getDiscussionComments(postId: number) {
       author: discussionComments.author,
       content: discussionComments.content,
       createdAt: discussionComments.createdAt,
+      isEdited: discussionComments.isEdited,
     })
     .from(discussionComments)
     .where(eq(discussionComments.postId, postId))
@@ -296,5 +324,23 @@ export async function addDiscussionComment(input: {
     });
   }
   await db.insert(discussionComments).values(input);
+  return { success: true } as const;
+}
+
+export async function updateDiscussionComment(input: { commentId: number; author: string; content: string }) {
+  const db = await requireDb();
+  const [comment] = await db.select({ id: discussionComments.id, author: discussionComments.author }).from(discussionComments).where(eq(discussionComments.id, input.commentId)).limit(1);
+  if (!comment) throw new TRPCError({ code: "NOT_FOUND", message: "댓글을 찾을 수 없습니다." });
+  if (comment.author !== input.author) throw new TRPCError({ code: "FORBIDDEN", message: "작성자 본인만 수정할 수 있습니다." });
+  await db.update(discussionComments).set({ content: input.content, isEdited: true }).where(eq(discussionComments.id, input.commentId));
+  return { success: true } as const;
+}
+
+export async function deleteDiscussionComment(commentId: number, author: string) {
+  const db = await requireDb();
+  const [comment] = await db.select({ id: discussionComments.id, author: discussionComments.author }).from(discussionComments).where(eq(discussionComments.id, commentId)).limit(1);
+  if (!comment) throw new TRPCError({ code: "NOT_FOUND", message: "댓글을 찾을 수 없습니다." });
+  if (comment.author !== author) throw new TRPCError({ code: "FORBIDDEN", message: "작성자 본인만 삭제할 수 있습니다." });
+  await db.delete(discussionComments).where(eq(discussionComments.id, commentId));
   return { success: true } as const;
 }

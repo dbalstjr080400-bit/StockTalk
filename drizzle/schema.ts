@@ -18,6 +18,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  isSuspended: boolean("isSuspended").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -61,6 +62,7 @@ export const discussionComments = mysqlTable(
     author: varchar("author", { length: 40 }).notNull(),
     content: text("content").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
+    isEdited: boolean("isEdited").default(false).notNull(),
   },
   table => [index("discussion_comments_post_id_idx").on(table.postId)]
 );
@@ -89,6 +91,7 @@ export const discussionReports = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     postId: int("postId").notNull().references(() => discussionPosts.id),
+    commentId: int("commentId"),
     reporter: varchar("reporter", { length: 40 }).notNull(),
     reason: varchar("reason", { length: 200 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

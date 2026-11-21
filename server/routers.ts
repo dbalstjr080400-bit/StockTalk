@@ -4,18 +4,23 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { limitedDiscussionWrite } from "./_core/discussionRateLimit";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { getStockDirectory } from "./stocks";
 import { isMarketIndex } from "@shared/marketIndices";
 import {
   addDiscussionComment,
+  adminDeleteDiscussionPost,
   createDiscussionPost,
   deleteDiscussionPost,
+  deleteDiscussionComment,
   getDiscussionComments,
+  getAdminSnapshot,
   incrementDiscussionViews,
   listDiscussionPosts,
   reportDiscussionPost,
+  setUserSuspended,
   toggleDiscussionLike,
+  updateDiscussionComment,
   updateDiscussionPost,
 } from "./db";
 
@@ -40,6 +45,11 @@ const visitorId = singleLine(128);
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
+  admin: router({
+    snapshot: adminProcedure.query(() => getAdminSnapshot()),
+    deletePost: adminProcedure.input(z.object({ postId })).mutation(({ input }) => adminDeleteDiscussionPost(input.postId)),
+    setSuspended: adminProcedure.input(z.object({ userId: postId, suspended: z.boolean() })).mutation(({ input }) => setUserSuspended(input.userId, input.suspended)),
+  }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -103,6 +113,15 @@ export const appRouter = router({
         z.object({ postId, author: singleLine(40), content: plainText(1000) })
       )
       .mutation(({ input }) => addDiscussionComment(input)),
+    updateComment: limitedDiscussionWrite
+      .input(z.object({ commentId: postId, author: singleLine(40), content: plainText(1000) }))
+      .mutation(({ input }) => updateDiscussionComment(input)),
+    removeComment: limitedDiscussionWrite
+      .input(z.object({ commentId: postId, author: singleLine(40) }))
+      .mutation(({ input }) => deleteDiscussionComment(input.commentId, input.author)),
+    reportComment: limitedDiscussionWrite
+      .input(z.object({ postId, commentId: postId, reporter: singleLine(40), reason: singleLine(200) }))
+      .mutation(({ input }) => reportDiscussionPost(input)),
   }),
 });
 
