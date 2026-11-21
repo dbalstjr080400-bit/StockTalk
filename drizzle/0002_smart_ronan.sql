@@ -1,0 +1,1 @@
+ALTER TABLE `discussion_posts` ADD `isEdited` boolean DEFAULT false NOT NULL;

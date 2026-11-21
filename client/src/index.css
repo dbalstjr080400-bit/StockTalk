@@ -290,3 +290,13 @@
 .news-headline-list a:hover strong{color:#d83d4b}
 .news-headline-list a small{grid-column:2 / 4;color:#9b777c;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:500;line-height:1.55}
 @media(max-width:700px){.news-headline-list a strong{font-size:10.5px}.news-headline-list a small{font-size:9.5px}}
+
+
+.edited-tag{display:inline-flex;align-items:center;padding:3px 6px;border-radius:4px;background:#fff0f1;color:#c24a55;font-family:'Noto Sans KR',Arial,sans-serif;font-size:9px;font-weight:800;white-space:nowrap}
+.thread-title-row{display:flex;align-items:center;gap:8px;margin:12px 0}
+.thread-title-row h2{margin:0;min-width:0}
+.thread-post-actions{display:flex;align-items:center;gap:6px;margin:4px 0 8px}
+.thread-post-actions button{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:1px solid #eadcdf;border-radius:6px;background:#fff;color:#98777c;font-family:'Noto Sans KR',Arial,sans-serif;font-size:10px;font-weight:800}
+.thread-post-actions button:hover{border-color:#d83d4b;color:#d83d4b;background:#fff7f7}
+.thread-post-actions button.danger{color:#bf6972}
+.thread-post-actions button.danger:hover{border-color:#cf5260;color:#ae2938}

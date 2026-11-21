@@ -137,6 +137,7 @@ export async function listDiscussionPosts(visitorId?: string) {
       content: discussionPosts.content,
       author: discussionPosts.author,
       createdAt: discussionPosts.createdAt,
+      isEdited: discussionPosts.isEdited,
       // Fully qualify correlated columns: Drizzle strips qualifiers in a
       // single-table SELECT, which would otherwise bind `id` to the inner table.
       likes:
@@ -162,6 +163,28 @@ export async function createDiscussionPost(input: NewDiscussionPost) {
     .values(input)
     .$returningId();
   return created.id;
+}
+
+export async function updateDiscussionPost(input: { postId: number; author: string; title: string; content: string }) {
+  const db = await requireDb();
+  const [post] = await db.select({ id: discussionPosts.id, author: discussionPosts.author }).from(discussionPosts).where(eq(discussionPosts.id, input.postId)).limit(1);
+  if (!post) throw new TRPCError({ code: "NOT_FOUND", message: "게시글을 찾을 수 없습니다." });
+  if (post.author !== input.author) throw new TRPCError({ code: "FORBIDDEN", message: "작성자 본인만 수정할 수 있습니다." });
+  await db.update(discussionPosts).set({ title: input.title, content: input.content, isEdited: true }).where(eq(discussionPosts.id, input.postId));
+  return { success: true } as const;
+}
+
+export async function deleteDiscussionPost(postId: number, author: string) {
+  const db = await requireDb();
+  const [post] = await db.select({ id: discussionPosts.id, author: discussionPosts.author }).from(discussionPosts).where(eq(discussionPosts.id, postId)).limit(1);
+  if (!post) throw new TRPCError({ code: "NOT_FOUND", message: "게시글을 찾을 수 없습니다." });
+  if (post.author !== author) throw new TRPCError({ code: "FORBIDDEN", message: "작성자 본인만 삭제할 수 있습니다." });
+  await db.transaction(async tx => {
+    await tx.delete(discussionComments).where(eq(discussionComments.postId, postId));
+    await tx.delete(discussionLikes).where(eq(discussionLikes.postId, postId));
+    await tx.delete(discussionPosts).where(eq(discussionPosts.id, postId));
+  });
+  return { success: true } as const;
 }
 
 export async function incrementDiscussionViews(postId: number) {

@@ -7,7 +7,7 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { STOCKS, searchStocks, stockFor, stockFromDirectory, type Stock } from '@/lib/stocks';
 import { useStockDirectory } from '@/hooks/useStockDirectory';
 import { PostCard, StockIcon, WatchStar, type Post } from '@/components/CommunityParts';
-import { ComposeDialog, ThreadDialog } from '@/components/CommunityDialogs';
+import { ComposeDialog, EditPostDialog, ThreadDialog } from '@/components/CommunityDialogs';
 import { StockExplorer } from '@/components/StockExplorer';
 import StockDetail from '@/components/StockDetail';
 import { IndexSection, NewsSection } from '@/components/MarketSections';
@@ -45,6 +45,7 @@ export default function Home() {
   const [visitorId] = useState(visitor);
   const [compose, setCompose] = useState(false);
   const [thread, setThread] = useState<Post | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [selectedIndexTicker, setSelectedIndexTicker] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -86,6 +87,8 @@ export default function Home() {
   }, [apiStocks, popularStocks, stockIndex]);
   const searchCatalog = directory.data ? orderedStocks : popularStocks;
   const create = trpc.discussion.create.useMutation({ onSuccess: (_result, draft) => { setCompose(false); if (isMarketIndex(draft.ticker) || draft.category === '주요지수') { setSection('indices'); setSelectedIndexTicker(isMarketIndex(draft.ticker) ? draft.ticker : null); setTicker('all'); } else { const nextSection = draft.category === '관심종목' ? 'watch' : draft.category === '인기종목' ? 'stocks' : draft.category === '자유게시판' ? 'free' : 'feed'; setSection(nextSection); setTicker(nextSection === 'stocks' || nextSection === 'free' ? 'all' : draft.ticker); } setSort('popular'); setSearch(''); void posts.refetch(); toast.success('게시판에 이야기를 올렸어요.'); }, onError: () => toast.error('게시글을 올리지 못했어요. 잠시 후 다시 시도해 주세요.') });
+  const updatePost = trpc.discussion.update.useMutation({ onSuccess: () => { setEditingPost(null); setThread(null); void posts.refetch(); toast.success('게시글을 수정했어요.'); }, onError: (error) => toast.error(error.message || '게시글을 수정하지 못했어요.') });
+  const removePost = trpc.discussion.remove.useMutation({ onSuccess: () => { setThread(null); void posts.refetch(); toast.success('게시글을 삭제했어요.'); }, onError: (error) => toast.error(error.message || '게시글을 삭제하지 못했어요.') });
   const like = trpc.discussion.toggleLike.useMutation({ onSuccess: () => { void posts.refetch(); }, onError: () => toast.error('공감을 표시하지 못했어요. 다시 시도해 주세요.') });
   const view = trpc.discussion.incrementViews.useMutation({ onSuccess: () => { void posts.refetch(); } });
   function updateNickname(name: string) { setNickname(name); localStorage.setItem('moa-name', JSON.stringify(name)); }
@@ -109,6 +112,12 @@ export default function Home() {
   function selectStock(id: string) { setStockVisits((current) => { const next = { ...current, [id]: [...(current[id] ?? []), Date.now()] }; localStorage.setItem('moa-stock-visits-v2', JSON.stringify(next)); return next; }); setTicker(id); setSection('feed'); setMobileMenu(false); setSearch(''); }
   function selectIndex(id: string) { setSelectedIndexTicker(id); setSection('indices'); setTicker('all'); setSearch(''); setMobileMenu(false); }
   function openThread(post: Post) { view.mutate({ postId: post.id }); setThread(post); }
+  function sharePost(post: Post) {
+    const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`;
+    if (navigator.share) { void navigator.share({ title: post.title, text: post.content.slice(0, 120), url }).catch(() => undefined); return; }
+    void navigator.clipboard?.writeText(url).then(() => toast.success('게시글 링크를 복사했어요.')).catch(() => toast.error('링크를 복사하지 못했어요.'));
+  }
+  function deletePost(post: Post) { if (window.confirm('이 게시글을 삭제할까요? 삭제하면 복구할 수 없습니다.')) removePost.mutate({ postId: post.id, author: post.author }); }
   function login() { try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
   async function logout() { try { await auth.logout(); toast.success('로그아웃했어요.'); } catch { toast.error('로그아웃하지 못했어요. 다시 시도해 주세요.'); } }
   function resolveStock(id: string) {
@@ -186,6 +195,7 @@ export default function Home() {
     </div>
     <nav className="mobile-bottom" aria-label="모바일 메뉴">{sidebarLinks.filter(({ id }) => id !== 'watch').map(({ id, text, icon: Icon }) => <button className={section === id ? 'active' : ''} key={id} onClick={() => selectSection(id)}><Icon size={19} /><span>{text === '종목 둘러보기' ? '종목' : text.replace('전체 피드', '홈')}</span></button>)}<button onClick={() => setCompose(true)}><Plus size={19} /><span>글쓰기</span></button><button className={mobileMenu ? 'active' : ''} onClick={() => setMobileMenu(!mobileMenu)} aria-label="메뉴 열기"><Menu size={19} /><span>메뉴</span></button></nav>
     {compose && <ComposeDialog initialStock={composeStock} initialCategory={selectedIndex ? '주요지수' : section === 'free' ? '자유게시판' : '종목토론'} stocks={selectedIndex ? [...indexStocks, ...searchCatalog] : searchCatalog} popular={selectedIndex ? [composeStock!, ...popularStocks] : popularStocks} loading={directory.loading} error={directory.error} retry={directory.retry} nickname={nickname} onNickname={updateNickname} onClose={() => setCompose(false)} pending={create.isPending} onSubmit={(draft) => create.mutate(draft)} hideBoardSelector={Boolean(selectedIndex)} />}
-    {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} nickname={nickname} onNickname={updateNickname} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} />}
+    {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} nickname={nickname} onNickname={updateNickname} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} canManage={Boolean(currentUserName && currentThread.author === currentUserName)} onEdit={() => { setEditingPost(currentThread); setThread(null); }} onDelete={() => deletePost(currentThread)} onShare={() => sharePost(currentThread)} />}
+    {editingPost && <EditPostDialog post={editingPost} onClose={() => setEditingPost(null)} pending={updatePost.isPending} onSubmit={(title, content) => updatePost.mutate({ postId: editingPost.id, author: editingPost.author, title, content })} />}
   </div>;
 }

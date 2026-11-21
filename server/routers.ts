@@ -10,10 +10,12 @@ import { isMarketIndex } from "@shared/marketIndices";
 import {
   addDiscussionComment,
   createDiscussionPost,
+  deleteDiscussionPost,
   getDiscussionComments,
   incrementDiscussionViews,
   listDiscussionPosts,
   toggleDiscussionLike,
+  updateDiscussionPost,
 } from "./db";
 
 const postId = z.number().int().positive().max(2147483647);
@@ -75,6 +77,12 @@ export const appRouter = router({
         }
         return createDiscussionPost(input);
       }),
+    update: limitedDiscussionWrite
+      .input(z.object({ postId, author: singleLine(40), title: singleLine(120), content: plainText(5000) }))
+      .mutation(({ input }) => updateDiscussionPost(input)),
+    remove: limitedDiscussionWrite
+      .input(z.object({ postId, author: singleLine(40) }))
+      .mutation(({ input }) => deleteDiscussionPost(input.postId, input.author)),
     incrementViews: publicProcedure
       .input(z.object({ postId }))
       .mutation(({ input }) => incrementDiscussionViews(input.postId)),

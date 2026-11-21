@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { LoaderCircle, MessageCircle, Send, X } from 'lucide-react';
+import { LoaderCircle, MessageCircle, Pencil, Send, Share2, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 import { relativeTime, stockFor, type Stock } from '@/lib/stocks';
@@ -56,7 +56,13 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
 }
 function ArrowIcon() { return <span aria-hidden="true">↗</span>; }
 
-export function ThreadDialog({ post, stock, nickname, onNickname, onClose, onChanged }: { post: Post; stock?: Stock; nickname: string; onNickname: (name: string) => void; onClose: () => void; onChanged: () => void }) {
+export function EditPostDialog({ post, onClose, onSubmit, pending }: { post: Post; onClose: () => void; onSubmit: (title: string, content: string) => void; pending: boolean }) {
+  const [title, setTitle] = useState(post.title);
+  const [content, setContent] = useState(post.content);
+  return <Modal onClose={onClose} label="게시글 수정"><div className="dialog-heading"><div><span className="eyebrow">EDIT YOUR POST</span><h2>게시글 수정</h2><p>수정한 게시물에는 수정함 표시가 남습니다.</p></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21} /></button></div><form className="compose-form" onSubmit={(event) => { event.preventDefault(); if (title.trim() && content.trim()) onSubmit(title.trim(), content.trim()); }}><label>제목<input required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} /></label><label>내용<textarea required maxLength={5000} rows={9} value={content} onChange={(event) => setContent(event.target.value)} /></label><div className="form-footer"><span>게시판과 종목은 유지됩니다.</span><button className="primary-button" disabled={pending} type="submit">{pending ? '저장 중...' : '수정 저장'} <ArrowIcon /></button></div></form></Modal>;
+}
+
+export function ThreadDialog({ post, stock, nickname, onNickname, onClose, onChanged, canManage, onEdit, onDelete, onShare }: { post: Post; stock?: Stock; nickname: string; onNickname: (name: string) => void; onClose: () => void; onChanged: () => void; canManage: boolean; onEdit: () => void; onDelete: () => void; onShare: () => void }) {
   const [author, setAuthor] = useState(nickname);
   const [content, setContent] = useState('');
   const comments = trpc.discussion.comments.useQuery({ postId: post.id }, { refetchInterval: 30_000 });
@@ -72,7 +78,7 @@ export function ThreadDialog({ post, stock, nickname, onNickname, onClose, onCha
   }
   return <Modal onClose={onClose} label="게시글과 댓글">
     <div className="thread-top"><div className="post-stock static"><StockIcon stock={stock ?? stockFor(post.ticker)} size="small" /><span>{post.stockName}</span><span className="post-category">{post.category}</span>{post.isDemo && <span className="demo-tag">예시 글</span>}</div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21} /></button></div>
-    <div className="thread-body"><h2>{post.title}</h2><div className="post-author"><Avatar name={post.author} /><strong>{post.author}</strong><i /><span className="post-time">{relativeTime(post.createdAt)}</span></div><p className="thread-content">{post.content}</p>
+    <div className="thread-body"><div className="thread-title-row"><h2>{post.title}</h2>{post.isEdited && <span className="edited-tag">수정함</span>}</div><div className="post-author"><Avatar name={post.author} /><strong>{post.author}</strong><i /><span className="post-time">{relativeTime(post.createdAt)}</span></div><div className="thread-post-actions"><button onClick={onShare}><Share2 size={14} /> 공유</button>{canManage && <><button onClick={onEdit}><Pencil size={14} /> 수정</button><button className="danger" onClick={onDelete}><Trash2 size={14} /> 삭제</button></>}</div><p className="thread-content">{post.content}</p>
       <div className="comments-heading"><MessageCircle size={18} /><strong>댓글</strong><span>{comments.data?.length ?? post.comments}</span></div>
       {comments.isLoading ? <div className="empty-comments"><LoaderCircle className="spin" size={19} /> 댓글을 불러오는 중이에요.</div> : comments.isError ? <div className="empty-comments">댓글을 불러오지 못했어요. <button onClick={() => void comments.refetch()}>다시 시도</button></div> : comments.data?.length ? <div className="comment-list">{comments.data.map((comment) => <div className="comment" key={comment.id}><Avatar name={comment.author} /><div><div className="comment-meta"><strong>{comment.author}</strong><span>{relativeTime(comment.createdAt)}</span></div><p>{comment.content}</p></div></div>)}</div> : <div className="empty-comments">아직 댓글이 없어요. 첫 번째 생각을 나눠보세요.</div>}
     </div>

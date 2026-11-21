@@ -37,6 +37,7 @@ export const discussionPosts = mysqlTable(
     content: text("content").notNull(),
     author: varchar("author", { length: 40 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
+    isEdited: boolean("isEdited").default(false).notNull(),
     // No view-increment endpoint is currently provided, so new posts start at zero.
     views: int("views").default(0).notNull(),
     isDemo: boolean("isDemo").default(false).notNull(),

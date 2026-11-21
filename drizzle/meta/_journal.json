@@ -15,6 +15,13 @@
       "when": 1795256677332,
       "tag": "0001_shiny_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1795271145387,
+      "tag": "0002_smart_ronan",
+      "breakpoints": true
     }
   ]
 }

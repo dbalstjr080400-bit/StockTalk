@@ -1,10 +1,10 @@
-import { ArrowUpRight, Heart, MessageCircle, MoreHorizontal, Star } from 'lucide-react';
+import { ArrowUpRight, Heart, MessageCircle, MoreHorizontal, Share2, Star } from 'lucide-react';
 import { relativeTime, stockFor, type Stock } from '@/lib/stocks';
 
 export type Post = {
   id: number; ticker: string; stockName: string; category: string; title: string;
   content: string; author: string; createdAt: Date | string; likes: number;
-  comments: number; views: number; liked: boolean; isDemo: boolean;
+  comments: number; views: number; liked: boolean; isDemo: boolean; isEdited: boolean;
 };
 
 export function StockIcon({ stock, size = 'normal' }: { stock?: Stock; size?: 'normal' | 'small' | 'large' }) {
@@ -32,11 +32,17 @@ function postTags(content: string) { return [...new Set(content.match(/#[^\s#]+/
 
 export function PostCard({ post, stock, onLike, onComments, onStock }: { post: Post; stock?: Stock; onLike: () => void; onComments: () => void; onStock: () => void }) {
   stock = stock ?? stockFor(post.ticker);
+  function share() {
+    const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`;
+    if (navigator.share) { void navigator.share({ title: post.title, text: post.content.slice(0, 120), url }).catch(() => undefined); }
+    else void navigator.clipboard?.writeText(url);
+  }
   return <article className="post-card">
     <div className="post-topline">
       <button className="post-stock" onClick={onStock}><StockIcon stock={stock} size="small" /><span>{post.stockName}</span><ArrowUpRight size={13} /></button>
       <span className="post-category">{post.category}</span>
       {post.isDemo && <span className="demo-tag">예시 글</span>}
+      {post.isEdited && <span className="edited-tag">수정함</span>}
       <button className="post-more" aria-label="게시글 내용 보기" onClick={onComments}><MoreHorizontal size={20} /></button>
     </div>
     <button className="post-content" onClick={onComments}>
@@ -48,6 +54,7 @@ export function PostCard({ post, stock, onLike, onComments, onStock }: { post: P
       <div className="post-author"><Avatar name={post.author} /><span>{post.author}</span><i /> <span className="post-time">{relativeTime(post.createdAt)}</span></div>
       <div className="post-actions">
         <span className="post-views">조회 {post.views}</span>
+        <button onClick={(event) => { event.stopPropagation(); share(); }} aria-label="게시글 공유"><Share2 size={15} /><span>공유</span></button>
         <button className={post.liked ? 'liked' : ''} onClick={onLike} aria-label={post.liked ? '공감 취소' : '공감하기'}><Heart size={16} fill={post.liked ? 'currentColor' : 'none'} /><span>{post.likes}</span></button>
         <button onClick={onComments} aria-label="댓글 보기"><MessageCircle size={16} /><span>{post.comments}</span></button>
       </div>
