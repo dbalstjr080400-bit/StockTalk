@@ -230,3 +230,12 @@
 
 .index-board-compose{position:sticky;bottom:8px;display:flex;align-items:center;justify-content:center;width:48px;height:48px;margin:16px 0 0 auto;border-radius:50%;background:#d83d4b;color:#fff;box-shadow:0 8px 22px #d83d4b45}
 .index-board-compose:hover{background:#b92d3a;transform:translateY(-1px)}
+
+/* Smooth Korean typography and controls for index boards */
+.index-board,.index-board *{font-family:'Noto Sans KR',Arial,sans-serif;font-synthesis:none}
+.index-board-heading h3{font-weight:800;letter-spacing:-.55px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.index-board-sort{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px;padding-bottom:11px;border-bottom:1px solid #f0f2f5}
+.index-sort-tabs,.index-period-tabs{display:flex;gap:5px;flex-wrap:wrap}
+.index-sort-tabs button,.index-period-tabs button{padding:7px 11px;border:1px solid #eadcdf;border-radius:6px;background:#fff;color:#9b777c;font-size:10px;font-weight:800}
+.index-sort-tabs button.active,.index-period-tabs button.active{border-color:#d83d4b;background:#d83d4b;color:#fff}
+@media(max-width:700px){.index-board-sort{align-items:flex-start;flex-direction:column}.index-period-tabs{width:100%}.index-period-tabs button{flex:1}}

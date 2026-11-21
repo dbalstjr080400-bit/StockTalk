@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { ArrowUpRight, BarChart3, ExternalLink, MessageCircle, Newspaper, Plus, X } from 'lucide-react';
 import { PostCard, StockIcon, type Post } from './CommunityParts';
 import type { Stock } from '@/lib/stocks';
@@ -54,15 +55,22 @@ type IndexSectionProps = {
 };
 
 export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, onWrite, onLike, onComments }: IndexSectionProps) {
+  const [sort, setSort] = useState<'recent' | 'popular'>('recent');
+  const [period, setPeriod] = useState<'all' | 'day' | 'week' | 'month'>('all');
   const stockForIndex = (index: MarketIndex) => indexStocks.find((stock) => stock.ticker === index.ticker) as Stock;
+  const visiblePosts = useMemo(() => {
+    const periodMs = period === 'day' ? 24 * 60 * 60 * 1000 : period === 'week' ? 7 * 24 * 60 * 60 * 1000 : period === 'month' ? 30 * 24 * 60 * 60 * 1000 : Infinity;
+    const scoped = sort === 'popular' && periodMs !== Infinity ? posts.filter((post) => Date.now() - new Date(post.createdAt).getTime() <= periodMs) : posts;
+    return [...scoped].sort((a, b) => sort === 'popular' ? b.views - a.views || b.likes - a.likes || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [period, posts, sort]);
   return <section className="market-content" aria-label="주요지수 목록">
     <div className="market-source-note"><BarChart3 size={17} /><span>지수 값과 변동률은 지연될 수 있습니다. 각 카드의 공식 시세 페이지에서 최신 값을 확인하세요.</span></div>
     <div className="index-grid">{MARKET_INDICES.map((index) => { const quote = INDEX_QUOTES[index.ticker]; return <article className={`index-card ${selected?.ticker === index.ticker ? 'selected' : ''}`} key={index.ticker}>
       <button className="index-card-main" onClick={() => onSelect(index)}><span className="market-card-kicker">{index.market}</span><strong>{index.name}</strong><span>{index.englishName}</span>{quote && <div className="index-quote"><div><b>{quote.price}</b><em className={quote.positive ? 'up' : 'down'}>{quote.change}</em></div><IndexMiniChart points={quote.points} positive={quote.positive} /></div>}<p>{index.description}</p></button>
       <div className="index-card-actions"><a href={index.sourceUrl} target="_blank" rel="noopener noreferrer">시세 보기 <ArrowUpRight size={13} /></a><button onClick={() => onSelect(index)}><MessageCircle size={13} /> 게시판 열기</button></div>
     </article>; })}</div>
-    {selected && <div className="index-board-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="index-board index-board-modal" role="dialog" aria-modal="true" aria-label={`${selected.name} 게시판`}><div className="index-board-heading"><div><span className="market-card-kicker">{selected.market}</span><h3>{selected.name} 게시판 <span>{posts.length}</span></h3><p>{selected.name}에 관한 글과 의견을 이 게시판에서 나눠보세요.</p></div><div className="index-board-actions"><button className="index-board-close" onClick={onClose} aria-label="게시판 닫기"><X size={19} /></button></div></div>
-      {posts.length ? <div className="feed-list">{posts.map((post) => <PostCard key={post.id} post={post} stock={stockForIndex(selected)} onLike={() => onLike(post)} onComments={() => onComments(post)} onStock={() => onSelect(selected)} />)}</div> : <div className="feed-state"><MessageCircle size={24} /><strong>아직 {selected.name} 이야기가 없어요.</strong><span>이 지수의 첫 글을 작성해 보세요.</span></div>}<button className="index-board-compose" onClick={onWrite} aria-label={`${selected.name} 게시판 글쓰기`}><Plus size={23} /></button>
+    {selected && <div className="index-board-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="index-board index-board-modal" role="dialog" aria-modal="true" aria-label={`${selected.name} 게시판`}><div className="index-board-heading"><div><span className="market-card-kicker">{selected.market}</span><h3>{selected.name} 게시판 <span>{visiblePosts.length}</span></h3><p>{selected.name}에 관한 글과 의견을 이 게시판에서 나눠보세요.</p></div><div className="index-board-actions"><button className="index-board-close" onClick={onClose} aria-label="게시판 닫기"><X size={19} /></button></div></div><div className="index-board-sort"><div className="index-sort-tabs"><button className={sort === 'recent' ? 'active' : ''} onClick={() => setSort('recent')}>최신순</button><button className={sort === 'popular' ? 'active' : ''} onClick={() => setSort('popular')}>인기순</button></div>{sort === 'popular' && <div className="index-period-tabs"><button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>전체</button><button className={period === 'day' ? 'active' : ''} onClick={() => setPeriod('day')}>1일</button><button className={period === 'week' ? 'active' : ''} onClick={() => setPeriod('week')}>1주</button><button className={period === 'month' ? 'active' : ''} onClick={() => setPeriod('month')}>1개월</button></div>}</div>
+      {visiblePosts.length ? <div className="feed-list">{visiblePosts.map((post) => <PostCard key={post.id} post={post} stock={stockForIndex(selected)} onLike={() => onLike(post)} onComments={() => onComments(post)} onStock={() => onSelect(selected)} />)}</div> : <div className="feed-state"><MessageCircle size={24} /><strong>아직 {selected.name} 이야기가 없어요.</strong><span>이 지수의 첫 글을 작성해 보세요.</span></div>}<button className="index-board-compose" onClick={onWrite} aria-label={`${selected.name} 게시판 글쓰기`}><Plus size={23} /></button>
     </section></div>}
   </section>;
 }
