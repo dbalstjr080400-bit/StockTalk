@@ -6,7 +6,7 @@ import { relativeTime } from '@/lib/stocks';
 import { Avatar } from './CommunityParts';
 
 export function ProfileDialog({ nickname, isAuthenticated, onClose, onLogin }: { nickname: string; isAuthenticated: boolean; onClose: () => void; onLogin: () => void }) {
-  const profile = trpc.profile.byNickname.useQuery({ nickname }, { retry: false });
+  const profile = trpc.profile.byNickname.useQuery({ nickname }, { retry: false, throwOnError: false });
   const status = trpc.follows.status.useQuery({ userId: profile.data?.id ?? 0 }, { enabled: isAuthenticated && Boolean(profile.data?.id) });
   const follow = trpc.follows.follow.useMutation({ onSuccess: () => { void status.refetch(); void profile.refetch(); toast.success(`${nickname}님을 팔로우했어요.`); }, onError: error => toast.error(error.message || '팔로우하지 못했어요.') });
   const unfollow = trpc.follows.unfollow.useMutation({ onSuccess: () => { void status.refetch(); void profile.refetch(); toast.success(`${nickname}님을 언팔로우했어요.`); }, onError: error => toast.error(error.message || '언팔로우하지 못했어요.') });

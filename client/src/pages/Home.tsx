@@ -67,6 +67,10 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
   useEffect(() => {
+    const requestedProfile = new URLSearchParams(window.location.search).get('profile');
+    if (requestedProfile?.trim()) setProfileNickname(requestedProfile.trim());
+  }, []);
+  useEffect(() => {
     if (!auth.isAuthenticated || !auth.user) {
       nicknamePromptedFor.current = null;
       return;
@@ -150,7 +154,14 @@ export default function Home() {
   function login() { setLoginOpen(true); }
   function requestCompose() { if (!auth.isAuthenticated) { setLoginOpen(true); return; } setCompose(true); }
   function beginLogin() { setLoginOpen(false); try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
-  function openProfile(author: string) { if (author.trim()) setProfileNickname(author.trim()); }
+  function openProfile(author: string) {
+    const target = author.trim();
+    if (!target) return;
+    const url = `${window.location.origin}${window.location.pathname}?profile=${encodeURIComponent(target)}`;
+    const popup = window.open(url, '_blank', 'popup=yes,width=560,height=780,resizable=yes,scrollbars=yes');
+    if (popup) { popup.focus(); return; }
+    setProfileNickname(target);
+  }
   async function logout() { try { await auth.logout(); toast.success('로그아웃했어요.'); } catch { toast.error('로그아웃하지 못했어요. 다시 시도해 주세요.'); } }
   function resolveStock(id: string) {
     return stockIndex.get(id) ?? stockFor(id) ?? stockFromDirectory({ symbol: id, name: posts.data?.find((post) => post.ticker === id)?.stockName ?? id, market: '', type: '' });
@@ -239,6 +250,6 @@ export default function Home() {
     {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} currentAuthor={currentUserName} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} canManage={Boolean(currentUserName && currentThread.author === currentUserName)} onEdit={() => { setEditingPost(currentThread); setThread(null); }} onDelete={() => deletePost(currentThread)} onShare={() => sharePost(currentThread)} onAuthorClick={openProfile} />}
     {editingPost && <EditPostDialog post={editingPost} onClose={() => setEditingPost(null)} pending={updatePost.isPending} onSubmit={(title, content) => updatePost.mutate({ postId: editingPost.id, author: editingPost.author, title, content })} />}
     {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onLogin={beginLogin} />}
-    {profileNickname && <ProfileDialog nickname={profileNickname} isAuthenticated={auth.isAuthenticated} onClose={() => setProfileNickname(null)} onLogin={() => { setProfileNickname(null); login(); }} />}
+    {profileNickname && <ProfileDialog nickname={profileNickname} isAuthenticated={auth.isAuthenticated} onClose={() => { if (window.opener && window.opener !== window) window.close(); else setProfileNickname(null); }} onLogin={() => { if (window.opener && window.opener !== window) window.close(); else { setProfileNickname(null); login(); } }} />}
   </div>;
 }
