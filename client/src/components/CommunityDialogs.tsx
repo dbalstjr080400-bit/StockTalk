@@ -7,7 +7,7 @@ import { Avatar, StockIcon, type Post } from './CommunityParts';
 import { StockPicker } from './StockPicker';
 
 type Draft = { ticker: string; stockName: string; category: string; title: string; content: string; author: string };
-const FREE_BOARD_TAGS = ['분석', '수익인증', '질문', '투자아이디어', '뉴스·이슈', '배당', '단기투자', '장기투자'] as const;
+const FREE_BOARD_TAGS = ['분석', '수익인증', '질문', '투자아이디어', '뉴스·이슈', '배당', '단기투자', '장기투자', '토론', '한탄'] as const;
 
 function Modal({ children, onClose, label }: { children: ReactNode; onClose: () => void; label: string }) {
   useEffect(() => {
@@ -43,9 +43,9 @@ export function ComposeDialog({ initialStock, initialCategory, stocks, popular, 
   return <Modal onClose={onClose} label="새 이야기 작성">
     <div className="dialog-heading"><div><span className="eyebrow">SHARE YOUR THOUGHTS</span><h2>새 이야기 쓰기</h2><p>나의 생각이 누군가에게 새로운 관점이 될 수 있어요.</p><small className="compose-policy">주식과 관련 없는 이야기는 삭제될 수 있습니다.</small></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21} /></button></div>
     <form onSubmit={submit} className="compose-form">
-      <div className={`form-two ${hideBoardSelector ? 'board-selector-hidden' : ''}`}><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} />{!hideBoardSelector && <label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>종목토론</option><option>자유게시판</option></select></label>}</div>
+      <div className={`form-two ${hideBoardSelector ? 'board-selector-hidden' : ''}`}><StockPicker stocks={stocks} popular={popular} selected={stock} onSelect={setStock} loading={loading} error={error} retry={retry} />{!hideBoardSelector && <label>게시판<select value={category} onChange={(e) => setCategory(e.target.value)}><option>자유게시판</option></select></label>}</div>
       <label>제목<input required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="어떤 이야기를 나누고 싶나요?" /></label>
-      {category === '자유게시판' && <fieldset className="tag-picker"><legend>태그 <small>선택사항 · 최대 8개</small></legend><div className="tag-option-list">{FREE_BOARD_TAGS.map((tag) => <button type="button" key={tag} className={tags.includes(tag) ? 'selected' : ''} onClick={() => setTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])}>#{tag}</button>)}</div></fieldset>}
+      {category === '자유게시판' && <fieldset className="tag-picker"><legend>태그 <small>선택사항 · 최대 10개</small></legend><div className="tag-option-list">{FREE_BOARD_TAGS.map((tag) => <button type="button" key={tag} className={tags.includes(tag) ? 'selected' : ''} onClick={() => setTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])}>#{tag}</button>)}</div></fieldset>}
       <label>내용<textarea required maxLength={4000} value={content} onChange={(e) => setContent(e.target.value)} placeholder="서로의 생각을 존중하며 이야기를 나눠주세요." rows={7} /></label>
       <div className="form-footer"><span>투자 판단은 스스로, 대화는 따뜻하게.</span><button disabled={pending || !stock} className="primary-button" type="submit">{pending ? '등록 중...' : '이야기 올리기'} <ArrowIcon /></button></div>
     </form>
