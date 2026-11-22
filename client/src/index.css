@@ -366,3 +366,7 @@
 /* Keep the logo and search field from competing for the same space */
 @media(min-width:1001px){.topbar-inner{grid-template-columns:minmax(0,1fr) minmax(260px,420px) auto;gap:18px}.brand{min-width:0;overflow:hidden}.brand img,.brand-name{flex:none}.brand-caption{min-width:0;overflow:hidden;text-overflow:ellipsis}.header-search{min-width:0;width:100%;max-width:420px}.header-search input{min-width:0;overflow:hidden;text-overflow:ellipsis}}
 @media(max-width:1000px){.topbar-inner{min-width:0}.brand{min-width:0;overflow:hidden}.brand-caption{min-width:0;overflow:hidden;text-overflow:ellipsis}.header-search{min-width:0;max-width:100%;width:100%}.header-search input{min-width:0;overflow:hidden;text-overflow:ellipsis}}
+
+.avatar-profile-button{display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;background:transparent;cursor:pointer}.avatar-profile-button:hover .avatar{box-shadow:0 0 0 3px #f4c3c7;transform:translateY(-1px)}.avatar-profile-button .avatar{transition:box-shadow .18s,transform .18s}
+/* Profile is a centered independent dialog, not a bottom sheet */
+.profile-dialog-backdrop{align-items:center!important;padding:18px!important}.profile-dialog{width:min(100%,600px);max-height:min(820px,calc(100vh - 36px));border-radius:20px!important;box-shadow:0 24px 90px #32131f45}@media(max-width:700px){.profile-dialog-backdrop{align-items:center!important;padding:12px!important}.profile-dialog{width:100%;max-height:calc(100vh - 24px);border-radius:20px!important;padding:28px 22px 24px}}

@@ -420,7 +420,7 @@ export async function getPublicProfileByNickname(profileNickname: string) {
       eq(users.name, normalizedNickname),
     ))
     .limit(1);
-  if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "프로필을 찾을 수 없습니다." });
+  if (!user) return null;
   const [posts, followers, following, activities] = await Promise.all([
     db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(discussionPosts).where(eq(discussionPosts.authorUserId, user.id)),
     db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(follows).where(eq(follows.followedUserId, user.id)),
