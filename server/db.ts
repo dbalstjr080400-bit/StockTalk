@@ -7,6 +7,7 @@ import {
   discussionLikes,
   discussionPosts,
   discussionReports,
+  adminMessages,
   follows,
   notifications,
   InsertUser,
@@ -254,6 +255,30 @@ export async function getAdminSnapshot() {
     db.select({ id: discussionPosts.id, title: discussionPosts.title, author: discussionPosts.author, category: discussionPosts.category, createdAt: discussionPosts.createdAt }).from(discussionPosts).orderBy(desc(discussionPosts.createdAt)).limit(100),
   ]);
   return { reports, members, posts };
+}
+
+export async function createAdminMessage(input: {
+  senderUserId: number;
+  senderName: string;
+  senderEmail?: string | null;
+  category: "문의" | "건의";
+  title: string;
+  content: string;
+}) {
+  const db = await requireDb();
+  const [created] = await db.insert(adminMessages).values(input).$returningId();
+  return { id: created.id };
+}
+
+export async function listAdminMessages() {
+  const db = await requireDb();
+  return db.select().from(adminMessages).orderBy(desc(adminMessages.createdAt)).limit(200);
+}
+
+export async function updateAdminMessageStatus(id: number, status: "new" | "read" | "resolved") {
+  const db = await requireDb();
+  await db.update(adminMessages).set({ status }).where(eq(adminMessages.id, id));
+  return { success: true } as const;
 }
 
 export async function adminDeleteDiscussionPost(postId: number) {

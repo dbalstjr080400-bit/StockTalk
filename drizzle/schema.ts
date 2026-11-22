@@ -140,3 +140,20 @@ export const discussionReports = mysqlTable(
   },
   table => [index("discussion_reports_post_id_idx").on(table.postId)]
 );
+
+export const adminMessages = mysqlTable(
+  "admin_messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    senderUserId: int("senderUserId").references(() => users.id),
+    senderName: varchar("senderName", { length: 40 }).notNull(),
+    senderEmail: varchar("senderEmail", { length: 320 }),
+    category: mysqlEnum("category", ["문의", "건의"]).notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    content: text("content").notNull(),
+    status: mysqlEnum("status", ["new", "read", "resolved"]).default("new").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("admin_messages_status_created_idx").on(table.status, table.createdAt)]
+);

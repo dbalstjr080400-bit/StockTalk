@@ -16,6 +16,9 @@ import {
   deleteDiscussionComment,
   getDiscussionComments,
   getAdminSnapshot,
+  createAdminMessage,
+  listAdminMessages,
+  updateAdminMessageStatus,
   incrementDiscussionViews,
   getFollowStatus,
   getPublicProfileByNickname,
@@ -71,6 +74,8 @@ export const appRouter = router({
   system: systemRouter,
   admin: router({
     snapshot: staffProcedure.query(() => getAdminSnapshot()),
+    messages: staffProcedure.query(() => listAdminMessages()),
+    updateMessageStatus: staffProcedure.input(z.object({ id: postId, status: z.enum(["new", "read", "resolved"]) })).mutation(({ input }) => updateAdminMessageStatus(input.id, input.status)),
     deletePost: adminProcedure.input(z.object({ postId })).mutation(({ input }) => adminDeleteDiscussionPost(input.postId)),
     setSuspended: adminProcedure.input(z.object({ userId: postId, suspended: z.boolean() })).mutation(({ input }) => setUserSuspended(input.userId, input.suspended)),
     setRole: adminProcedure.input(z.object({ userId: postId, role: z.enum(["user", "staff"]) })).mutation(({ input }) => setUserRole(input.userId, input.role)),
@@ -108,6 +113,9 @@ export const appRouter = router({
     list: protectedProcedure.query(({ ctx }) => listNotifications(ctx.user.id)),
     markRead: protectedProcedure.input(z.object({ notificationId: postId })).mutation(({ ctx, input }) => markNotificationRead(ctx.user.id, input.notificationId)),
     markAllRead: protectedProcedure.mutation(({ ctx }) => markAllNotificationsRead(ctx.user.id)),
+  }),
+  adminMessages: router({
+    create: protectedProcedure.input(z.object({ category: z.enum(["문의", "건의"]), title: singleLine(120), content: plainText(3000) })).mutation(({ ctx, input }) => createAdminMessage({ senderUserId: ctx.user.id, senderName: ctx.user.name ?? ctx.user.profileNickname ?? "회원", senderEmail: ctx.user.email, ...input })),
   }),
   profile: router({
     byNickname: publicProcedure.input(z.object({ nickname: singleLine(40) })).query(({ input }) => getPublicProfileByNickname(input.nickname)),

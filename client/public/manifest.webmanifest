@@ -1,0 +1,14 @@
+{
+  "name": "모아 | 함께 보는 투자 이야기",
+  "short_name": "모아",
+  "description": "투자 이야기가 모이는 곳, 모아",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff8f8",
+  "theme_color": "#d83d4b",
+  "icons": [
+    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Bookmark, Check, ChevronDown, Compass, FileText, Flame, Heart, Home as HomeIcon, Lightbulb, Menu, MessageCircle, Plus, Search, ShieldCheck, Sparkles, TrendingUp, UserRound, X } from 'lucide-react';
+import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Bookmark, Check, ChevronDown, Compass, FileText, Flame, Heart, Home as HomeIcon, Lightbulb, Mail, Menu, MessageCircle, Plus, Search, ShieldCheck, Sparkles, TrendingUp, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -14,6 +14,7 @@ import { AdminPanel } from '@/components/AdminPanel';
 import { AuthDialog } from '@/components/AuthDialog';
 import { ProfileDialog } from '@/components/ProfileDialog';
 import { NotificationInbox } from '@/components/NotificationInbox';
+import { AdminMessageDialog } from '@/components/AdminMessageDialog';
 import { MARKET_INDICES, isMarketIndex } from '@shared/marketIndices';
 
 type Section = 'feed' | 'hot' | 'watch' | 'stocks' | 'news' | 'indices' | 'profit' | 'free' | 'me' | 'admin';
@@ -55,6 +56,7 @@ export default function Home() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileNickname, setProfileNickname] = useState<string | null>(null);
   const [marketBarQuotes, setMarketBarQuotes] = useState<Record<string, MarketBarQuote>>({});
+  const [adminMessageOpen, setAdminMessageOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -156,6 +158,7 @@ export default function Home() {
   function reportPostFromMenu(post: Post) { const reason = window.prompt('신고 사유를 입력해 주세요.', '주식과 관련 없는 내용'); if (reason?.trim()) reportPost.mutate({ postId: post.id, reporter: currentUserName || '익명', reason: reason.trim() }); }
   function login() { setLoginOpen(true); }
   function requestCompose() { if (!auth.isAuthenticated) { setLoginOpen(true); return; } setCompose(true); }
+  function requestAdminMessage() { if (!auth.isAuthenticated) { setLoginOpen(true); return; } setAdminMessageOpen(true); }
   function openProfile(author: string) {
     const target = author.trim();
     if (!target) return;
@@ -243,15 +246,18 @@ export default function Home() {
       <aside className="right-sidebar"><div className="right-card popular-card"><div className="right-card-title"><div><span className="section-kicker"><span /> STOCK DISCOVERY</span><h3>눈여겨볼 종목 <span>✳</span></h3></div><button onClick={() => selectSection('stocks')} aria-label="전체 종목 보기"><ArrowUpRight size={18} /></button></div><p className="right-card-subtitle">종목 상세 진입 조회수 순으로 보여드려요.</p><div className="popular-period-tabs" role="tablist" aria-label="인기종목 조회 기간">{([['all', '전체'], ['month', '1개월'], ['week', '1주'], ['day', '1일']] as const).map(([value, label]) => <button key={value} type="button" className={popularPeriod === value ? 'active' : ''} onClick={() => setPopularPeriod(value)}>{label}</button>)}</div><div className="ranking-list">{popularStocks.map((stock, i) => <div className="ranking-row" key={stock.ticker}><span className="rank-number">{String(i + 1).padStart(2, '0')}</span><button className="rank-stock" onClick={() => selectStock(stock.ticker)}><StockIcon stock={stock} size="small" /><span><strong>{stock.name}</strong><small>{stock.ticker}</small><small className="rank-stock-views">조회수 {visitCount(stock.ticker).toLocaleString('ko-KR')}회</small></span></button><WatchStar active={watch.includes(stock.ticker)} name={stock.name} onClick={() => toggleWatch(stock.ticker)} /></div>)}</div><button className="card-link" onClick={() => selectSection('stocks')}>종목 전체보기 <ArrowRight size={14} /></button></div>
         <div className="right-card insight-card"><div className="insight-icon"><Lightbulb size={18} /></div><span className="insight-label">MOA NOTE</span><h3>투자의 시작은<br />좋은 질문 하나부터.</h3><p>궁금한 점이 있다면 편하게 물어보세요. 서로 다른 생각이 새로운 힌트가 될 거예요.</p><button onClick={() => requestCompose()}>질문하러 가기 <ArrowRight size={15} /></button><div className="insight-decoration">✳</div></div>
         <div className="community-note"><ShieldCheck size={17} /><div><strong>서로를 존중하는 투자 대화</strong><p>모아의 게시글은 투자 권유가 아니며, 투자 판단과 책임은 본인에게 있습니다.</p></div></div>
+        <div className="admin-contact-card"><div><span className="insight-label">SUPPORT</span><strong>관리자에게 문의·건의</strong><p>서비스 이용 중 궁금한 점이나 개선 의견을 보내주세요.</p></div><button onClick={requestAdminMessage}><Mail size={15} /> 메시지 보내기</button></div>
         <div className="right-card my-page-banner"><div className="my-banner-icon"><Menu size={17} /></div><span className="insight-label">모아 둘러보기</span><h3>나의 투자 활동을<br />한눈에 확인해요.</h3><p>회원정보와 내가 쓴 글, 공감한 글을 모아볼 수 있어요.</p><button onClick={() => selectSection('me')}>마이 페이지 <ArrowRight size={15} /></button></div>
-        <div className="sidebar-footer">MOA COMMUNITY <span>© 2026 모아</span><br />함께 나누는, 더 넓은 시야</div>
+        <div className="sidebar-footer">MOA COMMUNITY <span>© 2026 모아</span><br />함께 나누는, 더 넓은 시야<br /><small>현재 베타테스트 기간입니다.</small></div>
       </aside>
     </div>
+    <footer className="beta-footer">현재 모아는 베타테스트 기간입니다. 서비스 이용 중 발견한 문제나 의견은 관리자에게 보내주세요.</footer>
     <nav className="mobile-bottom" aria-label="모바일 메뉴">{sidebarLinks.filter(({ id }) => id !== 'watch').map(({ id, text, icon: Icon }) => <button className={section === id ? 'active' : ''} key={id} onClick={() => selectSection(id)}><Icon size={19} /><span>{text === '종목 둘러보기' ? '종목' : text.replace('전체 피드', '홈')}</span></button>)}<button onClick={() => requestCompose()}><Plus size={19} /><span>글쓰기</span></button><button className={mobileMenu ? 'active' : ''} onClick={() => setMobileMenu(!mobileMenu)} aria-label="메뉴 열기"><Menu size={19} /><span>메뉴</span></button></nav>
     {compose && <ComposeDialog initialStock={composeStock} initialCategory={selectedIndex ? '주요지수' : section === 'free' ? '자유게시판' : '종목토론'} stocks={selectedIndex ? [...indexStocks, ...searchCatalog] : searchCatalog} popular={selectedIndex ? [composeStock!, ...popularStocks] : popularStocks} loading={directory.loading} error={directory.error} retry={directory.retry} nickname={currentUserName} onClose={() => setCompose(false)} pending={create.isPending} onSubmit={(draft) => create.mutate(draft)} hideBoardSelector={Boolean(selectedIndex)} />}
     {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} currentAuthor={currentUserName} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} canManage={Boolean(currentUserName && currentThread.author === currentUserName)} onEdit={() => { setEditingPost(currentThread); setThread(null); }} onDelete={() => deletePost(currentThread)} onShare={() => sharePost(currentThread)} onAuthorClick={openProfile} />}
     {editingPost && <EditPostDialog post={editingPost} onClose={() => setEditingPost(null)} pending={updatePost.isPending} onSubmit={(title, content) => updatePost.mutate({ postId: editingPost.id, author: editingPost.author, title, content })} />}
     {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onAuthenticated={() => { void auth.refresh(); }} />}
+    {adminMessageOpen && <AdminMessageDialog onClose={() => setAdminMessageOpen(false)} />}
     {profileNickname && <ProfileDialog nickname={profileNickname} isAuthenticated={auth.isAuthenticated} onClose={() => { if (window.opener && window.opener !== window) window.close(); else setProfileNickname(null); }} onLogin={() => { if (window.opener && window.opener !== window) window.close(); else { setProfileNickname(null); login(); } }} />}
   </div>;
 }
