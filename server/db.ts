@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   discussionComments,
@@ -410,8 +410,16 @@ export async function markAllNotificationsRead(userId: number) {
 
 export async function getPublicProfileByNickname(profileNickname: string) {
   const db = await requireDb();
+  const normalizedNickname = profileNickname.trim().replace(/^@/, "");
   const [user] = await db.select({ id: users.id, profileNickname: users.profileNickname, name: users.name, createdAt: users.createdAt })
-    .from(users).where(eq(users.profileNickname, profileNickname)).limit(1);
+    .from(users)
+    .where(or(
+      eq(users.profileNickname, profileNickname),
+      eq(users.profileNickname, normalizedNickname),
+      eq(users.name, profileNickname),
+      eq(users.name, normalizedNickname),
+    ))
+    .limit(1);
   if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "프로필을 찾을 수 없습니다." });
   const [posts, followers, following, activities] = await Promise.all([
     db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(discussionPosts).where(eq(discussionPosts.authorUserId, user.id)),
