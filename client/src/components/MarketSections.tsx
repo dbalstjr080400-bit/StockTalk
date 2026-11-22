@@ -19,17 +19,6 @@ const NEWS_SOURCES: NewsSource[] = [
 type NewsHeadline = { source: string; sourceUrl: string; ranking: string; title: string; summary?: string; url: string };
 
 type IndexQuote = { price: string; change: string; positive: boolean; points: number[] };
-const INDEX_QUOTES: Record<string, IndexQuote> = {
-  KOSPI: { price: '2,745.32', change: '+0.84%', positive: true, points: [42, 39, 41, 37, 34, 35, 30, 32, 27, 25] },
-  KOSDAQ: { price: '812.45', change: '+0.56%', positive: true, points: [35, 38, 34, 36, 31, 29, 32, 28, 26, 24] },
-  NASDAQ: { price: '18,352.76', change: '+1.12%', positive: true, points: [45, 42, 43, 36, 38, 31, 33, 27, 29, 22] },
-  SP500: { price: '5,918.25', change: '+0.42%', positive: true, points: [40, 38, 39, 35, 36, 32, 34, 29, 30, 26] },
-  DOW30: { price: '43,408.47', change: '-0.18%', positive: false, points: [24, 27, 25, 29, 31, 30, 34, 32, 36, 38] },
-  VIX: { price: '15.34', change: '-3.22%', positive: false, points: [22, 25, 24, 29, 27, 31, 28, 34, 32, 36] },
-  BTC: { price: '$98,420.00', change: '+2.18%', positive: true, points: [48, 45, 47, 42, 44, 37, 39, 31, 34, 26] },
-  GOLD: { price: '$2,658.40', change: '+0.31%', positive: true, points: [36, 34, 35, 32, 31, 28, 30, 27, 25, 23] },
-  OIL: { price: '$69.12', change: '-1.05%', positive: false, points: [25, 27, 26, 29, 31, 30, 33, 35, 34, 38] },
-};
 
 function IndexMiniChart({ points, positive }: Pick<IndexQuote, 'points' | 'positive'>) {
   const min = Math.min(...points);
@@ -89,7 +78,7 @@ type IndexSectionProps = {
 export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, onWrite, onLike, onComments, currentAuthor, onEdit, onDelete, onReport, onAuthorClick }: IndexSectionProps) {
   const [sort, setSort] = useState<'recent' | 'popular'>('recent');
   const [period, setPeriod] = useState<'all' | 'day' | 'week' | 'month'>('all');
-  const [quotes, setQuotes] = useState<Record<string, IndexQuote>>(INDEX_QUOTES);
+  const [quotes, setQuotes] = useState<Record<string, IndexQuote>>({});
   const [quotesUpdatedAt, setQuotesUpdatedAt] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -116,7 +105,7 @@ export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, 
   return <section className="market-content" aria-label="주요지수 목록">
     <div className="market-source-note"><BarChart3 size={17} /><span>주요지수는 1분마다 최신 데이터를 확인합니다{quotesUpdatedAt ? ` · 최근 갱신 ${new Date(quotesUpdatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : ''}.</span></div>
     <div className="index-grid">{MARKET_INDICES.map((index) => { const quote = quotes[index.ticker]; return <article className={`index-card ${selected?.ticker === index.ticker ? 'selected' : ''}`} key={index.ticker}>
-      <button className="index-card-main" onClick={() => onSelect(index)}><span className="market-card-kicker">{index.market}</span><strong>{index.name}</strong><span>{index.englishName}</span>{quote && <div className="index-quote"><div><b>{quote.price}</b><em className={quote.positive ? 'up' : 'down'}>{quote.change}</em></div><IndexMiniChart points={quote.points} positive={quote.positive} /></div>}<p>{index.description}</p></button>
+      <button className="index-card-main" onClick={() => onSelect(index)}><span className="market-card-kicker">{index.market}</span><strong>{index.name}</strong><span>{index.englishName}</span>{quote ? <div className="index-quote"><div><b>{quote.price}</b><em className={quote.positive ? 'up' : 'down'}>{quote.change}</em></div><IndexMiniChart points={quote.points} positive={quote.positive} /></div> : <small className="index-quote-unavailable">실시간 시세를 불러오는 중입니다.</small>}<p>{index.description}</p></button>
       <div className="index-card-actions"><a href={index.sourceUrl} target="_blank" rel="noopener noreferrer">시세 보기 <ArrowUpRight size={13} /></a><button onClick={() => onSelect(index)}><MessageCircle size={13} /> 게시판 열기</button></div>
     </article>; })}</div>
     {selected && <div className="index-board-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="index-board index-board-modal" role="dialog" aria-modal="true" aria-label={`${selected.name} 게시판`}><div className="index-board-heading"><div><span className="market-card-kicker">{selected.market}</span><h3>{selected.name} 게시판 <span className="index-board-post-count">{visiblePosts.length}</span></h3><p>{selected.name}에 관한 글과 의견을 이 게시판에서 나눠보세요.</p></div><div className="index-board-actions"><button className="index-board-close" onClick={onClose} aria-label="게시판 닫기"><X size={19} /></button></div></div><div className="index-board-sort"><div className="index-sort-tabs"><button className={sort === 'recent' ? 'active' : ''} onClick={() => setSort('recent')}>최신순</button><button className={sort === 'popular' ? 'active' : ''} onClick={() => setSort('popular')}>인기순</button></div>{sort === 'popular' && <div className="index-period-tabs"><button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>전체</button><button className={period === 'day' ? 'active' : ''} onClick={() => setPeriod('day')}>1일</button><button className={period === 'week' ? 'active' : ''} onClick={() => setPeriod('week')}>1주</button><button className={period === 'month' ? 'active' : ''} onClick={() => setPeriod('month')}>1개월</button></div>}</div>

@@ -1,4 +1,3 @@
-import { callDataApi } from "./_core/dataApi";
 import { invokeLLM } from "./_core/llm";
 import { getStockDirectory, type Market } from "./stocks";
 
@@ -68,6 +67,17 @@ function unwrap(value: unknown): any {
   return value;
 }
 
+async function fetchYahooChart(symbol: string, interval: "1d" | "5m", range: "3mo" | "1d") {
+  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
+  url.search = new URLSearchParams({ interval, range, events: "history", includePrePost: "false" }).toString();
+  const response = await fetch(url, {
+    headers: { accept: "application/json", "user-agent": "StockTalk/1.0 market-data" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`Yahoo Finance 시세 요청이 실패했습니다 (${response.status}).`);
+  return unwrap(await response.json());
+}
+
 function isoDate(epoch: unknown, timezone: string) {
   if (typeof epoch !== "number" || !Number.isFinite(epoch)) return null;
   try {
@@ -84,7 +94,7 @@ export async function getMarketChart(symbol: string): Promise<ChartResponse> {
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   rateLimit();
   const yahoo = yahooSymbol(symbol, item.market);
-  const raw = unwrap(await callDataApi("YahooFinance/get_stock_chart", { query: { symbol: yahoo, interval: "1d", range: "3mo", region: "US" } })) as any;
+  const raw = await fetchYahooChart(yahoo, "1d", "3mo") as any;
   const result = raw?.chart?.result?.[0];
   const meta = result?.meta;
   if (!result || !meta || meta.symbol !== yahoo) throw new Error("시세 데이터가 비어 있거나 종목 식별이 일치하지 않습니다.");
@@ -127,7 +137,7 @@ export async function getMarketIndexQuotes(): Promise<MarketIndexQuote[]> {
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const quotes = (await Promise.allSettled(Object.entries(MARKET_INDEX_SYMBOLS).map(async ([ticker, symbol]) => {
     rateLimit();
-    const raw = unwrap(await callDataApi("YahooFinance/get_stock_chart", { query: { symbol, interval: "5m", range: "1d", region: "US" } })) as any;
+    const raw = await fetchYahooChart(symbol, "5m", "1d") as any;
     const result = raw?.chart?.result?.[0];
     const meta = result?.meta;
     const closes = result?.indicators?.quote?.[0]?.close;

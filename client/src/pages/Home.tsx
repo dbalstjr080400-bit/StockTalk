@@ -18,6 +18,7 @@ import { MARKET_INDICES, isMarketIndex } from '@shared/marketIndices';
 
 type Section = 'feed' | 'hot' | 'watch' | 'stocks' | 'news' | 'indices' | 'profit' | 'free' | 'me' | 'admin';
 type PopularPeriod = 'all' | 'month' | 'week' | 'day';
+type MarketBarQuote = { ticker: string; price: string; change: string; positive: boolean; updatedAt?: string };
 function saved<T>(key: string, fallback: T): T { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } }
 function visitor(): string { const existing = localStorage.getItem('moa-visitor'); if (existing && /^[A-Za-z0-9-]{1,128}$/.test(existing)) return existing; const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; localStorage.setItem('moa-visitor', id); return id; }
 
@@ -53,6 +54,7 @@ export default function Home() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileNickname, setProfileNickname] = useState<string | null>(null);
+  const [marketBarQuotes, setMarketBarQuotes] = useState<Record<string, MarketBarQuote>>({});
   const searchRef = useRef<HTMLInputElement>(null);
   const nicknamePromptedFor = useRef<number | null>(null);
   useEffect(() => {
@@ -80,6 +82,20 @@ export default function Home() {
       setProfileEditing(true);
     }
   }, [auth.isAuthenticated, auth.user, nickname]);
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/market/quotes', { cache: 'no-store' });
+        if (!response.ok) throw new Error('market quotes request failed');
+        const payload = await response.json() as { quotes?: MarketBarQuote[] };
+        if (active && Array.isArray(payload.quotes)) setMarketBarQuotes(Object.fromEntries(payload.quotes.map((quote) => [quote.ticker, quote])));
+      } catch { /* 조회 실패 시 임의의 예시 가격을 표시하지 않습니다. */ }
+    };
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 60_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
   const directory = useStockDirectory();
   const apiStocks = useMemo(() => directory.data?.items.map(stockFromDirectory) ?? [], [directory.data]);
   const stockIndex = useMemo(() => new Map(apiStocks.map((stock) => [stock.ticker, stock])), [apiStocks]);
@@ -212,7 +228,7 @@ export default function Home() {
       <div className="header-search"><Search size={18} /><input ref={searchRef} value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) { setTicker('all'); setSection('feed'); } }} placeholder="종목이나 이야기를 검색해 보세요" aria-label="종목이나 이야기 검색" />{search && <button onClick={() => setSearch('')} aria-label="검색어 지우기"><X size={15} /></button>}<span className="search-key">⌘ K</span></div>
       <div className="header-actions"><NotificationInbox isAuthenticated={Boolean(auth.isAuthenticated && auth.user)} onLogin={login} />{auth.loading ? <span className="auth-status">확인 중</span> : auth.isAuthenticated && auth.user ? <><span className="auth-name">{auth.user.name || auth.user.email || '이름 미설정'}</span><button className="auth-button" onClick={() => void logout()}>로그아웃</button></> : <><button className="auth-button" onClick={login}>회원가입</button><button className="auth-button login-button" onClick={login}>로그인</button></>}</div>
     </div></header>
-    <div className="market-bar"><div className="market-inner"><span className="market-label"><span className="market-dot" /> MARKET SNAPSHOT · 예시</span><div className="market-items"><span>KOSPI <b>2,745.32</b> <em>+0.84%</em></span><span>KOSDAQ <b>812.45</b> <em>+0.56%</em></span><span>NASDAQ <b>18,352.76</b> <em>+1.12%</em></span><span>USD/KRW <b>1,378.50</b> <em className="down">−0.23%</em></span></div><span className="sample-market">예시 데이터 · 실시간 아님</span></div></div>
+    <div className="market-bar"><div className="market-inner"><span className="market-label"><span className="market-dot" /> MARKET SNAPSHOT · 실시간 조회</span><div className="market-items">{['KOSPI', 'KOSDAQ', 'NASDAQ', 'BTC'].map((ticker) => { const quote = marketBarQuotes[ticker]; return <span key={ticker}>{ticker} <b>{quote?.price ?? '—'}</b> <em className={quote && !quote.positive ? 'down' : undefined}>{quote?.change ?? '조회 중'}</em></span>; })}</div><span className="sample-market">Yahoo Finance 기준 · 1분 갱신</span></div></div>
     <div className="page-layout">
       <aside className={`left-sidebar ${mobileMenu ? 'mobile-open' : ''}`}>
         <nav className="side-nav" aria-label="커뮤니티 메뉴">{sidebarLinks.map(({ id, text, icon: Icon }) => <button key={id} className={section === id ? 'active' : ''} onClick={() => selectSection(id)}><Icon size={19} strokeWidth={section === id ? 2.2 : 1.7} /><span>{text}</span>{id === 'hot' && <span className="nav-hot">HOT</span>}</button>)}<button className={section === 'me' ? 'active' : ''} onClick={() => selectSection('me')}><UserRound size={19} strokeWidth={section === 'me' ? 2.2 : 1.7} /><span>내정보</span></button>{(auth.user?.role === 'admin' || auth.user?.role === 'staff') && <button className={section === 'admin' ? 'active' : ''} onClick={() => selectSection('admin')}><ShieldCheck size={19} strokeWidth={section === 'admin' ? 2.2 : 1.7} /><span>{auth.user?.role === 'staff' ? '관계자 설정' : '관리자 센터'}</span></button>}</nav>
