@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   discussionComments,
   discussionLikes,
   discussionPosts,
   discussionReports,
+  notifications,
   InsertUser,
   users,
 } from "../drizzle/schema";
@@ -43,7 +44,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "email", "loginMethod", "profileNickname"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -85,6 +86,15 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 }
 
+export async function updateUserNickname(userId: number, profileNickname: string) {
+  const db = await requireDb();
+  const [existing] = await db.select({ id: users.id }).from(users)
+    .where(and(eq(users.profileNickname, profileNickname), sql`${users.id} <> ${userId}`)).limit(1);
+  if (existing) throw new TRPCError({ code: "CONFLICT", message: "이미 사용 중인 닉네임입니다." });
+  await db.update(users).set({ profileNickname }).where(eq(users.id, userId));
+  return { success: true } as const;
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) {
@@ -103,7 +113,7 @@ export async function getUserByOpenId(openId: string) {
 
 type NewDiscussionPost = Pick<
   typeof discussionPosts.$inferInsert,
-  "ticker" | "stockName" | "category" | "title" | "content" | "author"
+  "ticker" | "stockName" | "category" | "title" | "content" | "author" | "authorUserId"
 >;
 
 function hashVisitorId(visitorId: string): string {
@@ -239,7 +249,7 @@ export async function incrementDiscussionViews(postId: number) {
   return { success: true } as const;
 }
 
-export async function toggleDiscussionLike(postId: number, visitorId: string) {
+export async function toggleDiscussionLike(postId: number, visitorId: string, actorUserId?: number) {
   const db = await requireDb();
   const visitorHash = hashVisitorId(visitorId);
 
@@ -247,7 +257,7 @@ export async function toggleDiscussionLike(postId: number, visitorId: string) {
     // Lock the parent row to serialize toggles for this post, including two
     // concurrent requests from the same visitor. The unique index is a backstop.
     const [post] = await tx
-      .select({ id: discussionPosts.id })
+      .select({ id: discussionPosts.id, authorUserId: discussionPosts.authorUserId, title: discussionPosts.title })
       .from(discussionPosts)
       .where(eq(discussionPosts.id, postId))
       .for("update");
@@ -273,7 +283,10 @@ export async function toggleDiscussionLike(postId: number, visitorId: string) {
         .delete(discussionLikes)
         .where(eq(discussionLikes.id, existing.id));
     } else {
-      await tx.insert(discussionLikes).values({ postId, visitorHash });
+      await tx.insert(discussionLikes).values({ postId, visitorHash, userId: actorUserId });
+      if (actorUserId && post.authorUserId && actorUserId !== post.authorUserId) {
+        await tx.insert(notifications).values({ recipientUserId: post.authorUserId, actorUserId, type: "like", postId, message: `회원님의 게시글에 하트를 눌렀습니다: ${post.title}` });
+      }
     }
     const [count] = await tx
       .select({ value: sql<number>`count(*)`.mapWith(Number) })
@@ -316,6 +329,7 @@ export async function addDiscussionComment(input: {
   parentCommentId?: number;
   author: string;
   content: string;
+  authorUserId?: number;
 }) {
   const db = await requireDb();
   const [post] = await db
@@ -339,7 +353,16 @@ export async function addDiscussionComment(input: {
       throw new TRPCError({ code: "BAD_REQUEST", message: "답글을 달 댓글을 찾을 수 없습니다." });
     }
   }
-  await db.insert(discussionComments).values(input);
+  const [created] = await db.insert(discussionComments).values(input).$returningId();
+  if (input.authorUserId) {
+    const taggedNicknames = [...input.content.matchAll(/@[\p{L}\p{N}_-]{1,40}/gu)].map(match => match[0].slice(1));
+    const uniqueNicknames = [...new Set(taggedNicknames)];
+    if (uniqueNicknames.length) {
+      const taggedUsers = await db.select({ id: users.id, profileNickname: users.profileNickname }).from(users).where(inArray(users.profileNickname, uniqueNicknames));
+      const recipients = taggedUsers.filter(user => user.id !== input.authorUserId && user.profileNickname);
+      if (recipients.length) await db.insert(notifications).values(recipients.map(user => ({ recipientUserId: user.id, actorUserId: input.authorUserId, type: "mention" as const, postId: input.postId, commentId: created.id, message: `${input.author}님이 댓글에서 회원님을 언급했습니다.` })));
+    }
+  }
   return { success: true } as const;
 }
 
@@ -358,5 +381,27 @@ export async function deleteDiscussionComment(commentId: number, author: string)
   if (!comment) throw new TRPCError({ code: "NOT_FOUND", message: "댓글을 찾을 수 없습니다." });
   if (comment.author !== author) throw new TRPCError({ code: "FORBIDDEN", message: "작성자 본인만 삭제할 수 있습니다." });
   await db.delete(discussionComments).where(eq(discussionComments.id, commentId));
+  return { success: true } as const;
+}
+
+
+export async function listNotifications(userId: number) {
+  const db = await requireDb();
+  const [items, unread] = await Promise.all([
+    db.select({ id: notifications.id, type: notifications.type, postId: notifications.postId, commentId: notifications.commentId, message: notifications.message, isRead: notifications.isRead, createdAt: notifications.createdAt, actorName: users.profileNickname }).from(notifications).leftJoin(users, eq(notifications.actorUserId, users.id)).where(eq(notifications.recipientUserId, userId)).orderBy(desc(notifications.createdAt), desc(notifications.id)).limit(100),
+    db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(notifications).where(and(eq(notifications.recipientUserId, userId), eq(notifications.isRead, false))),
+  ]);
+  return { items, unreadCount: unread[0]?.count ?? 0 };
+}
+
+export async function markNotificationRead(userId: number, notificationId: number) {
+  const db = await requireDb();
+  await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, notificationId), eq(notifications.recipientUserId, userId)));
+  return { success: true } as const;
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await requireDb();
+  await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.recipientUserId, userId), eq(notifications.isRead, false)));
   return { success: true } as const;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD CONSTRAINT `users_profile_nickname_unique` UNIQUE(`profileNickname`);

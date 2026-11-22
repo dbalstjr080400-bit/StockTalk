@@ -14,7 +14,8 @@ import {
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
+    name: text("name"),
+    profileNickname: varchar("profileNickname", { length: 40 }),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin", "staff"]).default("user").notNull(),
@@ -22,7 +23,7 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
+}, table => [uniqueIndex("users_profile_nickname_unique").on(table.profileNickname)]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -36,6 +37,7 @@ export const discussionPosts = mysqlTable(
     category: varchar("category", { length: 30 }).notNull(),
     title: varchar("title", { length: 120 }).notNull(),
     content: text("content").notNull(),
+    authorUserId: int("authorUserId").references(() => users.id),
     author: varchar("author", { length: 40 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     isEdited: boolean("isEdited").default(false).notNull(),
@@ -60,6 +62,7 @@ export const discussionComments = mysqlTable(
       .notNull()
       .references(() => discussionPosts.id),
     parentCommentId: int("parentCommentId"),
+    authorUserId: int("authorUserId").references(() => users.id),
     author: varchar("author", { length: 40 }).notNull(),
     content: text("content").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -75,6 +78,7 @@ export const discussionLikes = mysqlTable(
     postId: int("postId")
       .notNull()
       .references(() => discussionPosts.id),
+    userId: int("userId").references(() => users.id),
     // Only the SHA-256 digest is stored, not the supplied browser identifier.
     visitorHash: varchar("visitorHash", { length: 64 }).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -84,6 +88,27 @@ export const discussionLikes = mysqlTable(
       table.postId,
       table.visitorHash
     ),
+  ]
+);
+
+export const notifications = mysqlTable(
+  "notifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    recipientUserId: int("recipientUserId")
+      .notNull()
+      .references(() => users.id),
+    actorUserId: int("actorUserId").references(() => users.id),
+    type: mysqlEnum("type", ["mention", "like"]).notNull(),
+    postId: int("postId").references(() => discussionPosts.id),
+    commentId: int("commentId").references(() => discussionComments.id),
+    message: varchar("message", { length: 255 }).notNull(),
+    isRead: boolean("isRead").default(false).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("notifications_recipient_created_idx").on(table.recipientUserId, table.createdAt),
+    index("notifications_recipient_read_idx").on(table.recipientUserId, table.isRead),
   ]
 );
 

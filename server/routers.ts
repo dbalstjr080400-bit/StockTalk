@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { limitedDiscussionWrite } from "./_core/discussionRateLimit";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
 import { getStockDirectory } from "./stocks";
 import { isMarketIndex } from "@shared/marketIndices";
 import {
@@ -16,11 +16,15 @@ import {
   getDiscussionComments,
   getAdminSnapshot,
   incrementDiscussionViews,
+  listNotifications,
   listDiscussionPosts,
+  markAllNotificationsRead,
+  markNotificationRead,
   reportDiscussionPost,
   setUserRole,
   setUserSuspended,
   toggleDiscussionLike,
+  updateUserNickname,
   updateDiscussionComment,
   updateDiscussionPost,
 } from "./db";
@@ -61,6 +65,12 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    updateNickname: protectedProcedure.input(z.object({ nickname: singleLine(40) })).mutation(({ ctx, input }) => updateUserNickname(ctx.user.id, input.nickname)),
+  }),
+  notifications: router({
+    list: protectedProcedure.query(({ ctx }) => listNotifications(ctx.user.id)),
+    markRead: protectedProcedure.input(z.object({ notificationId: postId })).mutation(({ ctx, input }) => markNotificationRead(ctx.user.id, input.notificationId)),
+    markAllRead: protectedProcedure.mutation(({ ctx }) => markAllNotificationsRead(ctx.user.id)),
   }),
 
   discussion: router({
@@ -81,14 +91,14 @@ export const appRouter = router({
           author: singleLine(40),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const directory = await getStockDirectory();
         const isDirectoryStock = directory.items.some(stock => stock.symbol === input.ticker && stock.name === input.stockName);
         const isIndex = isMarketIndex(input.ticker);
         if (!isDirectoryStock && !isIndex) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "등록된 종목 코드와 이름을 선택해 주세요." });
         }
-        return createDiscussionPost(input);
+        return createDiscussionPost({ ...input, authorUserId: ctx.user?.id });
       }),
     update: limitedDiscussionWrite
       .input(z.object({ postId, author: singleLine(40), title: singleLine(120), content: plainText(5000) }))
@@ -104,8 +114,8 @@ export const appRouter = router({
       .mutation(({ input }) => incrementDiscussionViews(input.postId)),
     toggleLike: limitedDiscussionWrite
       .input(z.object({ postId, visitorId }))
-      .mutation(({ input }) =>
-        toggleDiscussionLike(input.postId, input.visitorId)
+      .mutation(({ input, ctx }) =>
+        toggleDiscussionLike(input.postId, input.visitorId, ctx.user?.id)
       ),
     comments: publicProcedure
       .input(z.object({ postId }))
@@ -114,7 +124,7 @@ export const appRouter = router({
       .input(
         z.object({ postId, parentCommentId: postId.optional(), author: singleLine(40), content: plainText(1000) })
       )
-      .mutation(({ input }) => addDiscussionComment(input)),
+      .mutation(({ input, ctx }) => addDiscussionComment({ ...input, authorUserId: ctx.user?.id })),
     updateComment: limitedDiscussionWrite
       .input(z.object({ commentId: postId, author: singleLine(40), content: plainText(1000) }))
       .mutation(({ input }) => updateDiscussionComment(input)),
