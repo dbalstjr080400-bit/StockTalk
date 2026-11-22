@@ -15,7 +15,9 @@ export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
     name: text("name"),
-    profileNickname: varchar("profileNickname", { length: 40 }),
+  profileNickname: varchar("profileNickname", { length: 40 }),
+  loginId: varchar("loginId", { length: 80 }),
+  passwordHash: text("passwordHash"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin", "staff"]).default("user").notNull(),
@@ -23,7 +25,7 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-}, table => [uniqueIndex("users_profile_nickname_unique").on(table.profileNickname)]);
+}, table => [uniqueIndex("users_profile_nickname_unique").on(table.profileNickname), uniqueIndex("users_login_id_unique").on(table.loginId)]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

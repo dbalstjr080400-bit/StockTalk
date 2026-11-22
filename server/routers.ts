@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
 import { limitedDiscussionWrite } from "./_core/discussionRateLimit";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
@@ -32,6 +33,8 @@ import {
   updateUserNickname,
   updateDiscussionComment,
   updateDiscussionPost,
+  authenticateLocalUser,
+  registerLocalUser,
 } from "./db";
 
 const postId = z.number().int().positive().max(2147483647);
@@ -66,6 +69,24 @@ export const appRouter = router({
   }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    register: publicProcedure.input(z.object({
+      loginId: z.string().trim().min(4).max(40).regex(/^[A-Za-z0-9._-]+$/, "아이디는 영문·숫자와 . _ -만 사용할 수 있어요."),
+      password: z.string().min(8).max(128),
+      name: singleLine(40),
+      profileNickname: singleLine(40),
+    })).mutation(async ({ ctx, input }) => {
+      const user = await registerLocalUser(input);
+      if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "회원가입을 완료하지 못했어요." });
+      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? user.profileNickname ?? "" });
+      ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 1000 * 60 * 60 * 24 * 365 });
+      return { success: true } as const;
+    }),
+    loginLocal: publicProcedure.input(z.object({ loginId: z.string().trim().min(1).max(80), password: z.string().min(1).max(128) })).mutation(async ({ ctx, input }) => {
+      const user = await authenticateLocalUser(input.loginId, input.password);
+      const token = await sdk.createSessionToken(user.openId, { name: user.name ?? user.profileNickname ?? "" });
+      ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 1000 * 60 * 60 * 24 * 365 });
+      return { success: true } as const;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

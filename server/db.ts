@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -94,6 +94,43 @@ export async function updateUserNickname(userId: number, profileNickname: string
   if (existing) throw new TRPCError({ code: "CONFLICT", message: "이미 사용 중인 닉네임입니다." });
   await db.update(users).set({ profileNickname }).where(eq(users.id, userId));
   return { success: true } as const;
+}
+
+function hashLocalPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyLocalPassword(password: string, stored: string) {
+  const [salt, expectedHex] = stored.split(":");
+  if (!salt || !expectedHex) return false;
+  const actual = scryptSync(password, salt, 64);
+  const expected = Buffer.from(expectedHex, "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+export async function registerLocalUser(input: { loginId: string; password: string; name: string; profileNickname: string }) {
+  const db = await requireDb();
+  const [duplicateLoginId] = await db.select({ id: users.id }).from(users).where(eq(users.loginId, input.loginId)).limit(1);
+  if (duplicateLoginId) throw new TRPCError({ code: "CONFLICT", message: "이미 사용 중인 아이디입니다." });
+  const [duplicateNickname] = await db.select({ id: users.id }).from(users).where(eq(users.profileNickname, input.profileNickname)).limit(1);
+  if (duplicateNickname) throw new TRPCError({ code: "CONFLICT", message: "이미 사용 중인 닉네임입니다." });
+  const openId = `local:${randomBytes(24).toString("hex")}`;
+  await db.insert(users).values({ openId, loginId: input.loginId, passwordHash: hashLocalPassword(input.password), name: input.name, profileNickname: input.profileNickname, loginMethod: "password" });
+  const [created] = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return created;
+}
+
+export async function authenticateLocalUser(loginId: string, password: string) {
+  const db = await requireDb();
+  const [user] = await db.select().from(users).where(eq(users.loginId, loginId)).limit(1);
+  if (!user?.passwordHash || !verifyLocalPassword(password, user.passwordHash)) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "아이디 또는 비밀번호가 올바르지 않습니다." });
+  }
+  if (user.isSuspended) throw new TRPCError({ code: "FORBIDDEN", message: "이 계정은 이용이 제한되어 있습니다." });
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
+  return user;
 }
 
 export async function getUserByOpenId(openId: string) {
