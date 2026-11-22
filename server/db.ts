@@ -117,7 +117,8 @@ export async function registerLocalUser(input: { loginId: string; password: stri
   const [duplicateNickname] = await db.select({ id: users.id }).from(users).where(eq(users.profileNickname, input.profileNickname)).limit(1);
   if (duplicateNickname) throw new TRPCError({ code: "CONFLICT", message: "이미 사용 중인 닉네임입니다." });
   const openId = `local:${randomBytes(24).toString("hex")}`;
-  await db.insert(users).values({ openId, loginId: input.loginId, passwordHash: hashLocalPassword(input.password), name: input.name, profileNickname: input.profileNickname, loginMethod: "password" });
+  const role = ENV.ownerLoginId === input.loginId ? "admin" : "user";
+  await db.insert(users).values({ openId, loginId: input.loginId, passwordHash: hashLocalPassword(input.password), name: input.name, profileNickname: input.profileNickname, loginMethod: "password", role });
   const [created] = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return created;
 }
@@ -129,8 +130,9 @@ export async function authenticateLocalUser(loginId: string, password: string) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "아이디 또는 비밀번호가 올바르지 않습니다." });
   }
   if (user.isSuspended) throw new TRPCError({ code: "FORBIDDEN", message: "이 계정은 이용이 제한되어 있습니다." });
-  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
-  return user;
+  const shouldBeAdmin = ENV.ownerLoginId === loginId;
+  await db.update(users).set({ lastSignedIn: new Date(), ...(shouldBeAdmin ? { role: "admin" as const } : {}) }).where(eq(users.id, user.id));
+  return shouldBeAdmin && user.role !== "admin" ? { ...user, role: "admin" as const } : user;
 }
 
 export async function getUserByOpenId(openId: string) {
