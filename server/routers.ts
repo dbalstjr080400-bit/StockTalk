@@ -39,7 +39,15 @@ import {
 
 const postId = z.number().int().positive().max(2147483647);
 const PROFANITY_WORDS = ['시발', '씨발', '병신', '새끼', '개새끼', '좆', '년놈', 'fuck', 'shit', 'bitch'];
-const containsProfanity = (value: string) => PROFANITY_WORDS.some(word => value.toLowerCase().includes(word));
+const containsProfanity = (value: string) => {
+  const normalized = value.toLowerCase().replace(/[\u200b-\u200d\ufeff]/g, '');
+  return PROFANITY_WORDS.some(word => {
+    if (/^[a-z]+$/.test(word)) {
+      return new RegExp(`(^|[^a-z0-9])${word}(?=$|[^a-z0-9])`, 'i').test(normalized);
+    }
+    return new RegExp(`(^|[^가-힣])${word}(?=$|[^가-힣])`).test(normalized);
+  });
+};
 const plainText = (max: number) =>
   z
     .string()
