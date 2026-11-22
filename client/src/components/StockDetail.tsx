@@ -147,22 +147,25 @@ function StockDetailContent({ stock, posts, onBack, onLike, onComments, onWrite,
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const analysisRequest = useRef<AbortController | null>(null);
+  const chartLoaded = useRef(false);
 
   useEffect(() => {
-    const controller = new AbortController();
-    setChart({ status: 'loading' });
+    let active = true;
     async function loadChart() {
+      const controller = new AbortController();
       try {
         const response = await fetch(`/api/market/chart?symbol=${encodeURIComponent(stock.ticker)}`, { signal: controller.signal });
         if (!response.ok) throw new Error('가격 데이터를 불러오지 못했어요.');
         const data = parseChart(await response.json());
-        if (!controller.signal.aborted) setChart({ status: 'success', data });
+        if (active && !controller.signal.aborted) { chartLoaded.current = true; setChart({ status: 'success', data }); }
       } catch (error) {
-        if (!controller.signal.aborted) setChart({ status: 'error', message: errorMessage(error, '가격 데이터를 불러오지 못했어요.') });
+        if (active && !controller.signal.aborted && !chartLoaded.current) setChart({ status: 'error', message: errorMessage(error, '가격 데이터를 불러오지 못했어요.') });
       }
     }
+    if (!chartLoaded.current) setChart({ status: 'loading' });
     void loadChart();
-    return () => controller.abort();
+    const timer = window.setInterval(() => { void loadChart(); }, 60_000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [stock.ticker, chartAttempt]);
 
   useEffect(() => () => { analysisRequest.current?.abort(); }, []);

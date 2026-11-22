@@ -18,7 +18,7 @@ const analysisCache = new Map<string, CacheEntry<AnalysisResponse>>();
 const indexQuoteCache = new Map<string, CacheEntry<MarketIndexQuote[]>>();
 const inflightAnalysis = new Map<string, Promise<AnalysisResponse>>();
 const requestTimes: number[] = [];
-const CACHE_MS = 15 * 60_000;
+const CACHE_MS = 50_000;
 const ANALYSIS_CACHE_MS = 60 * 60_000;
 const MAX_CACHE = 100;
 const MAX_REQUESTS_PER_MINUTE = 30;
@@ -103,6 +103,11 @@ export async function getMarketChart(symbol: string): Promise<ChartResponse> {
   }
   const unique = Array.from(new Map(points.map(point => [point.date, point])).values()).sort((a, b) => a.date.localeCompare(b.date));
   if (unique.length < 2) throw new Error("사용 가능한 일별 종가가 부족합니다.");
+  const latestPrice = meta?.regularMarketPrice;
+  const latestTime = meta?.regularMarketTime;
+  if (typeof latestPrice === "number" && Number.isFinite(latestPrice) && latestPrice > 0 && typeof latestTime === "number" && Number.isFinite(latestTime)) {
+    unique.push({ date: new Date(latestTime * 1000).toISOString(), close: latestPrice });
+  }
   const value: ChartResponse = {
     symbol, name: item.name, market: item.market, source: "Yahoo Finance", sourceUrl: "https://finance.yahoo.com/",
     currency, exchangeTimezoneName: timezone, retrievedAt: new Date().toISOString(),
