@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, Bookmark, Check, ChevronDown, Compass, FileText, Flame, Heart, Home as HomeIcon, Lightbulb, Menu, MessageCircle, Plus, Search, ShieldCheck, Sparkles, TrendingUp, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc';
-import { startLogin } from '@/const';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { STOCKS, searchStocks, stockFor, stockFromDirectory, type Stock } from '@/lib/stocks';
 import { useStockDirectory } from '@/hooks/useStockDirectory';
@@ -153,7 +152,6 @@ export default function Home() {
   function reportPostFromMenu(post: Post) { const reason = window.prompt('신고 사유를 입력해 주세요.', '주식과 관련 없는 내용'); if (reason?.trim()) reportPost.mutate({ postId: post.id, reporter: currentUserName || '익명', reason: reason.trim() }); }
   function login() { setLoginOpen(true); }
   function requestCompose() { if (!auth.isAuthenticated) { setLoginOpen(true); return; } setCompose(true); }
-  function beginLogin() { setLoginOpen(false); try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
   function openProfile(author: string) {
     const target = author.trim();
     if (!target) return;
@@ -249,7 +247,7 @@ export default function Home() {
     {compose && <ComposeDialog initialStock={composeStock} initialCategory={selectedIndex ? '주요지수' : section === 'free' ? '자유게시판' : '종목토론'} stocks={selectedIndex ? [...indexStocks, ...searchCatalog] : searchCatalog} popular={selectedIndex ? [composeStock!, ...popularStocks] : popularStocks} loading={directory.loading} error={directory.error} retry={directory.retry} nickname={currentUserName} onClose={() => setCompose(false)} pending={create.isPending} onSubmit={(draft) => create.mutate(draft)} hideBoardSelector={Boolean(selectedIndex)} />}
     {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} currentAuthor={currentUserName} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} canManage={Boolean(currentUserName && currentThread.author === currentUserName)} onEdit={() => { setEditingPost(currentThread); setThread(null); }} onDelete={() => deletePost(currentThread)} onShare={() => sharePost(currentThread)} onAuthorClick={openProfile} />}
     {editingPost && <EditPostDialog post={editingPost} onClose={() => setEditingPost(null)} pending={updatePost.isPending} onSubmit={(title, content) => updatePost.mutate({ postId: editingPost.id, author: editingPost.author, title, content })} />}
-    {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onLogin={beginLogin} onAuthenticated={() => { void auth.refresh(); }} />}
+    {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onAuthenticated={() => { void auth.refresh(); }} />}
     {profileNickname && <ProfileDialog nickname={profileNickname} isAuthenticated={auth.isAuthenticated} onClose={() => { if (window.opener && window.opener !== window) window.close(); else setProfileNickname(null); }} onLogin={() => { if (window.opener && window.opener !== window) window.close(); else { setProfileNickname(null); login(); } }} />}
   </div>;
 }
