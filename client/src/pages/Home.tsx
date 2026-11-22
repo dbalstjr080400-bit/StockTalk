@@ -149,7 +149,12 @@ export default function Home() {
   }
   const filteredPosts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = (posts.data ?? []).filter((post) => (ticker === 'all' || post.ticker === ticker) && (section !== 'watch' || watch.includes(post.ticker)) && (section !== 'profit' || post.category === '수익인증') && (section !== 'feed' || post.category === '종목토론') && (section !== 'free' || post.category === '자유게시판') && (!term || `${post.title} ${post.content} ${post.stockName} ${post.ticker} ${post.author}`.toLowerCase().includes(term)));
+    const filtered = (posts.data ?? []).filter((post) => {
+      const searchableText = `${post.title} ${post.author} ${post.content} ${post.stockName} ${post.ticker} ${post.category}`.toLowerCase();
+      const matchesSearch = !term || searchableText.includes(term);
+      if (term) return matchesSearch;
+      return (ticker === 'all' || post.ticker === ticker) && (section !== 'watch' || watch.includes(post.ticker)) && (section !== 'profit' || post.category === '수익인증') && (section !== 'feed' || post.category === '종목토론') && (section !== 'free' || post.category === '자유게시판');
+    });
     const periodMs = hotPeriod === 'day' ? 24 * 60 * 60 * 1000 : hotPeriod === 'week' ? 7 * 24 * 60 * 60 * 1000 : hotPeriod === 'month' ? 30 * 24 * 60 * 60 * 1000 : Infinity;
     const scoped = section === 'hot' && periodMs !== Infinity ? filtered.filter((post) => Date.now() - new Date(post.createdAt).getTime() <= periodMs) : filtered;
     return [...scoped].sort((a, b) => section === 'hot' || sort === 'popular' ? b.views - a.views || b.likes - a.likes || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
