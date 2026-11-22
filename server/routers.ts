@@ -35,6 +35,8 @@ import {
 } from "./db";
 
 const postId = z.number().int().positive().max(2147483647);
+const PROFANITY_WORDS = ['시발', '씨발', '병신', '새끼', '개새끼', '좆', '년놈', 'fuck', 'shit', 'bitch'];
+const containsProfanity = (value: string) => PROFANITY_WORDS.some(word => value.toLowerCase().includes(word));
 const plainText = (max: number) =>
   z
     .string()
@@ -44,7 +46,8 @@ const plainText = (max: number) =>
     .refine(
       value => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value),
       "제어 문자는 사용할 수 없습니다."
-    );
+    )
+    .refine(value => !containsProfanity(value), "욕설이나 부적절한 표현은 사용할 수 없습니다.");
 const singleLine = (max: number) =>
   plainText(max).refine(
     value => !/[\r\n\t]/.test(value),
