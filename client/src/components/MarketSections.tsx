@@ -89,6 +89,24 @@ type IndexSectionProps = {
 export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, onWrite, onLike, onComments, currentAuthor, onEdit, onDelete, onReport, onAuthorClick }: IndexSectionProps) {
   const [sort, setSort] = useState<'recent' | 'popular'>('recent');
   const [period, setPeriod] = useState<'all' | 'day' | 'week' | 'month'>('all');
+  const [quotes, setQuotes] = useState<Record<string, IndexQuote>>(INDEX_QUOTES);
+  const [quotesUpdatedAt, setQuotesUpdatedAt] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refreshQuotes = async () => {
+      try {
+        const response = await fetch('/api/market/quotes', { cache: 'no-store' });
+        if (!response.ok) throw new Error('quotes request failed');
+        const payload = await response.json() as { quotes?: Array<IndexQuote & { ticker: string; updatedAt?: string }> };
+        if (!active || !Array.isArray(payload.quotes)) return;
+        setQuotes((current) => ({ ...current, ...Object.fromEntries(payload.quotes!.map((quote) => [quote.ticker, quote])) }));
+        setQuotesUpdatedAt(payload.quotes[0]?.updatedAt ?? null);
+      } catch { /* Keep the last successful quote while the next minute refresh retries. */ }
+    };
+    void refreshQuotes();
+    const timer = window.setInterval(() => { void refreshQuotes(); }, 60_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
   const stockForIndex = (index: MarketIndex) => indexStocks.find((stock) => stock.ticker === index.ticker) as Stock;
   const visiblePosts = useMemo(() => {
     const periodMs = period === 'day' ? 24 * 60 * 60 * 1000 : period === 'week' ? 7 * 24 * 60 * 60 * 1000 : period === 'month' ? 30 * 24 * 60 * 60 * 1000 : Infinity;
@@ -96,8 +114,8 @@ export function IndexSection({ selected, posts, indexStocks, onSelect, onClose, 
     return [...scoped].sort((a, b) => sort === 'popular' ? b.views - a.views || b.likes - a.likes || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [period, posts, sort]);
   return <section className="market-content" aria-label="주요지수 목록">
-    <div className="market-source-note"><BarChart3 size={17} /><span>지수 값과 변동률은 지연될 수 있습니다. 각 카드의 공식 시세 페이지에서 최신 값을 확인하세요.</span></div>
-    <div className="index-grid">{MARKET_INDICES.map((index) => { const quote = INDEX_QUOTES[index.ticker]; return <article className={`index-card ${selected?.ticker === index.ticker ? 'selected' : ''}`} key={index.ticker}>
+    <div className="market-source-note"><BarChart3 size={17} /><span>주요지수는 1분마다 최신 데이터를 확인합니다{quotesUpdatedAt ? ` · 최근 갱신 ${new Date(quotesUpdatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : ''}.</span></div>
+    <div className="index-grid">{MARKET_INDICES.map((index) => { const quote = quotes[index.ticker]; return <article className={`index-card ${selected?.ticker === index.ticker ? 'selected' : ''}`} key={index.ticker}>
       <button className="index-card-main" onClick={() => onSelect(index)}><span className="market-card-kicker">{index.market}</span><strong>{index.name}</strong><span>{index.englishName}</span>{quote && <div className="index-quote"><div><b>{quote.price}</b><em className={quote.positive ? 'up' : 'down'}>{quote.change}</em></div><IndexMiniChart points={quote.points} positive={quote.positive} /></div>}<p>{index.description}</p></button>
       <div className="index-card-actions"><a href={index.sourceUrl} target="_blank" rel="noopener noreferrer">시세 보기 <ArrowUpRight size={13} /></a><button onClick={() => onSelect(index)}><MessageCircle size={13} /> 게시판 열기</button></div>
     </article>; })}</div>

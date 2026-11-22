@@ -15,12 +15,18 @@ export type AnalysisResponse = {
 type CacheEntry<T> = { value: T; expiresAt: number };
 const chartCache = new Map<string, CacheEntry<ChartResponse>>();
 const analysisCache = new Map<string, CacheEntry<AnalysisResponse>>();
+const indexQuoteCache = new Map<string, CacheEntry<MarketIndexQuote[]>>();
 const inflightAnalysis = new Map<string, Promise<AnalysisResponse>>();
 const requestTimes: number[] = [];
 const CACHE_MS = 15 * 60_000;
 const ANALYSIS_CACHE_MS = 60 * 60_000;
 const MAX_CACHE = 100;
 const MAX_REQUESTS_PER_MINUTE = 30;
+
+export type MarketIndexQuote = { ticker: string; price: string; change: string; positive: boolean; points: number[]; updatedAt: string };
+const MARKET_INDEX_SYMBOLS: Record<string, string> = {
+  KOSPI: "^KS11", KOSDAQ: "^KQ11", NASDAQ: "^IXIC", SP500: "^GSPC", DOW30: "^DJI", VIX: "^VIX", BTC: "BTC-USD", GOLD: "GC=F", OIL: "CL=F",
+};
 
 function cleanCaches() {
   const now = Date.now();
@@ -104,6 +110,32 @@ export async function getMarketChart(symbol: string): Promise<ChartResponse> {
   };
   chartCache.set(symbol, { value, expiresAt: Date.now() + CACHE_MS });
   return value;
+}
+
+function formatIndexPrice(value: number, currency: string) {
+  const formatted = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+  return currency === "USD" ? `$${formatted}` : formatted;
+}
+
+export async function getMarketIndexQuotes(): Promise<MarketIndexQuote[]> {
+  const cached = indexQuoteCache.get("all");
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const quotes = (await Promise.allSettled(Object.entries(MARKET_INDEX_SYMBOLS).map(async ([ticker, symbol]) => {
+    rateLimit();
+    const raw = unwrap(await callDataApi("YahooFinance/get_stock_chart", { query: { symbol, interval: "5m", range: "1d", region: "US" } })) as any;
+    const result = raw?.chart?.result?.[0];
+    const meta = result?.meta;
+    const closes = result?.indicators?.quote?.[0]?.close;
+    const points = Array.isArray(closes) ? closes.filter((point: unknown): point is number => typeof point === "number" && Number.isFinite(point) && point > 0) : [];
+    const price = typeof meta?.regularMarketPrice === "number" && Number.isFinite(meta.regularMarketPrice) ? meta.regularMarketPrice : points.at(-1);
+    const previous = typeof meta?.chartPreviousClose === "number" ? meta.chartPreviousClose : meta?.previousClose;
+    if (typeof price !== "number" || typeof previous !== "number" || previous <= 0 || points.length < 2) throw new Error(`지수 ${ticker} 데이터가 없습니다.`);
+    const changeValue = ((price / previous) - 1) * 100;
+    const currency = typeof meta?.currency === "string" ? meta.currency : "";
+    return { ticker, price: formatIndexPrice(price, currency), change: `${changeValue >= 0 ? "+" : ""}${changeValue.toFixed(2)}%`, positive: changeValue >= 0, points, updatedAt: new Date().toISOString() };
+  }))).flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  if (quotes.length > 0) indexQuoteCache.set("all", { value: quotes, expiresAt: Date.now() + 50_000 });
+  return quotes;
 }
 
 function safeAnalysisText(value: unknown) {

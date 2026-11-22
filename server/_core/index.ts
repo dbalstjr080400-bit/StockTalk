@@ -6,7 +6,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { getStockDirectory } from "../stocks";
-import { getMarketAnalysis, getMarketChart, marketErrorStatus } from "../market";
+import { getMarketAnalysis, getMarketChart, getMarketIndexQuotes, marketErrorStatus } from "../market";
 import { getNewsHeadlines } from "../news";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -40,6 +40,14 @@ async function startServer() {
       res.set("Cache-Control", "no-store").json(chart);
     } catch (error) {
       res.status(marketErrorStatus(error)).json({ error: error instanceof Error ? error.message : "시세 데이터를 불러오지 못했습니다." });
+    }
+  });
+  app.get("/api/market/quotes", async (_req, res) => {
+    try {
+      const quotes = await getMarketIndexQuotes();
+      res.set("Cache-Control", "no-store").json({ quotes, retrievedAt: new Date().toISOString() });
+    } catch (error) {
+      res.status(marketErrorStatus(error)).json({ error: error instanceof Error ? error.message : "주요지수 데이터를 불러오지 못했습니다.", quotes: [] });
     }
   });
   app.post("/api/market/analysis", async (req, res) => {
