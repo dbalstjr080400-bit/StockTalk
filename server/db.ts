@@ -457,15 +457,7 @@ export async function getPublicProfileByNickname(profileNickname: string) {
       eq(users.name, normalizedNickname),
     ))
     .limit(1);
-  if (!user) {
-    const authorNames = [profileNickname, normalizedNickname, `@${normalizedNickname}`];
-    const activities = await db.select({ id: discussionPosts.id, ticker: discussionPosts.ticker, stockName: discussionPosts.stockName, category: discussionPosts.category, title: discussionPosts.title, content: discussionPosts.content, author: discussionPosts.author, createdAt: discussionPosts.createdAt, isEdited: discussionPosts.isEdited, views: discussionPosts.views, isDemo: discussionPosts.isDemo })
-      .from(discussionPosts)
-      .where(or(...authorNames.map(author => eq(discussionPosts.author, author))))
-      .orderBy(desc(discussionPosts.createdAt), desc(discussionPosts.id))
-      .limit(50);
-    return { id: 0, profileNickname: normalizedNickname || profileNickname, name: normalizedNickname || profileNickname, createdAt: activities[0]?.createdAt ?? new Date(), postCount: activities.length, followerCount: 0, followingCount: 0, activities };
-  }
+  if (!user) return null;
   const [posts, followers, following, activities] = await Promise.all([
     db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(discussionPosts).where(eq(discussionPosts.authorUserId, user.id)),
     db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(follows).where(eq(follows.followedUserId, user.id)),

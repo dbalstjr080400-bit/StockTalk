@@ -21,7 +21,7 @@ export function ProfileDialog({ nickname, isAuthenticated, onClose, onLogin }: {
         {isAuthenticated ? <button className={`profile-follow-button ${status.data?.following ? 'following' : ''}`} disabled={!userId || follow.isPending || unfollow.isPending} onClick={() => { if (!userId) return; if (status.data?.following) unfollow.mutate({ userId }); else follow.mutate({ userId }); }}>{status.data?.following ? <><Users size={16} /> 팔로잉</> : <><UserPlus size={16} /> 팔로우</>}</button> : <button className="profile-follow-button" onClick={onLogin}><UserPlus size={16} /> 로그인하고 팔로우</button>}
         <div className="profile-activity-heading"><div><span className="section-kicker"><span /> ACTIVITY</span><h3>작성한 글</h3></div><CalendarDays size={18} /></div>
         {profile.data.activities.length ? <div className="profile-activity-list">{profile.data.activities.map(activity => <button className="profile-activity-item" key={activity.id} onClick={onClose}><div><strong>{activity.title}</strong><p>{activity.content.slice(0, 110)}</p><small>{activity.stockName} · {relativeTime(activity.createdAt)}</small></div><ArrowUpRight size={16} /></button>)}</div> : <div className="profile-dialog-empty"><UserRound size={22} /><span>아직 작성한 글이 없어요.</span></div>}
-      </> : null}
+      </> : <div className="profile-dialog-state">존재하지 않는 프로필입니다.</div>}
     </section>
   </div>;
 }
