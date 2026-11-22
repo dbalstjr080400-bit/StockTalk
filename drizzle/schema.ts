@@ -28,6 +28,20 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+export const follows = mysqlTable(
+  "follows",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    followerUserId: int("followerUserId").notNull().references(() => users.id),
+    followedUserId: int("followedUserId").notNull().references(() => users.id),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("follows_follower_followed_unique").on(table.followerUserId, table.followedUserId),
+    index("follows_followed_idx").on(table.followedUserId),
+  ]
+);
+
 export const discussionPosts = mysqlTable(
   "discussion_posts",
   {

@@ -16,6 +16,10 @@ import {
   getDiscussionComments,
   getAdminSnapshot,
   incrementDiscussionViews,
+  getFollowStatus,
+  getPublicProfileByNickname,
+  followUser,
+  unfollowUser,
   listNotifications,
   listDiscussionPosts,
   markAllNotificationsRead,
@@ -71,6 +75,14 @@ export const appRouter = router({
     list: protectedProcedure.query(({ ctx }) => listNotifications(ctx.user.id)),
     markRead: protectedProcedure.input(z.object({ notificationId: postId })).mutation(({ ctx, input }) => markNotificationRead(ctx.user.id, input.notificationId)),
     markAllRead: protectedProcedure.mutation(({ ctx }) => markAllNotificationsRead(ctx.user.id)),
+  }),
+  profile: router({
+    byNickname: publicProcedure.input(z.object({ nickname: singleLine(40) })).query(({ input }) => getPublicProfileByNickname(input.nickname)),
+  }),
+  follows: router({
+    status: protectedProcedure.input(z.object({ userId: postId })).query(({ ctx, input }) => getFollowStatus(ctx.user.id, input.userId)),
+    follow: protectedProcedure.input(z.object({ userId: postId })).mutation(({ ctx, input }) => followUser(ctx.user.id, input.userId)),
+    unfollow: protectedProcedure.input(z.object({ userId: postId })).mutation(({ ctx, input }) => unfollowUser(ctx.user.id, input.userId)),
   }),
 
   discussion: router({

@@ -7,6 +7,7 @@ import {
   discussionLikes,
   discussionPosts,
   discussionReports,
+  follows,
   notifications,
   InsertUser,
   users,
@@ -404,4 +405,40 @@ export async function markAllNotificationsRead(userId: number) {
   const db = await requireDb();
   await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.recipientUserId, userId), eq(notifications.isRead, false)));
   return { success: true } as const;
+}
+
+
+export async function getPublicProfileByNickname(profileNickname: string) {
+  const db = await requireDb();
+  const [user] = await db.select({ id: users.id, profileNickname: users.profileNickname, name: users.name, createdAt: users.createdAt })
+    .from(users).where(eq(users.profileNickname, profileNickname)).limit(1);
+  if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "프로필을 찾을 수 없습니다." });
+  const [posts, followers, following, activities] = await Promise.all([
+    db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(discussionPosts).where(eq(discussionPosts.authorUserId, user.id)),
+    db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(follows).where(eq(follows.followedUserId, user.id)),
+    db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(follows).where(eq(follows.followerUserId, user.id)),
+    db.select({ id: discussionPosts.id, ticker: discussionPosts.ticker, stockName: discussionPosts.stockName, category: discussionPosts.category, title: discussionPosts.title, content: discussionPosts.content, author: discussionPosts.author, createdAt: discussionPosts.createdAt, isEdited: discussionPosts.isEdited, views: discussionPosts.views, isDemo: discussionPosts.isDemo })
+      .from(discussionPosts).where(eq(discussionPosts.authorUserId, user.id)).orderBy(desc(discussionPosts.createdAt), desc(discussionPosts.id)).limit(50),
+  ]);
+  return { ...user, postCount: posts[0]?.count ?? 0, followerCount: followers[0]?.count ?? 0, followingCount: following[0]?.count ?? 0, activities };
+}
+
+export async function getFollowStatus(followerUserId: number, followedUserId: number) {
+  const db = await requireDb();
+  const [relation] = await db.select({ id: follows.id }).from(follows)
+    .where(and(eq(follows.followerUserId, followerUserId), eq(follows.followedUserId, followedUserId))).limit(1);
+  return { following: Boolean(relation) };
+}
+
+export async function followUser(followerUserId: number, followedUserId: number) {
+  if (followerUserId === followedUserId) throw new TRPCError({ code: "BAD_REQUEST", message: "자기 자신은 팔로우할 수 없습니다." });
+  const db = await requireDb();
+  await db.insert(follows).values({ followerUserId, followedUserId }).onDuplicateKeyUpdate({ set: { followerUserId } });
+  return { following: true } as const;
+}
+
+export async function unfollowUser(followerUserId: number, followedUserId: number) {
+  const db = await requireDb();
+  await db.delete(follows).where(and(eq(follows.followerUserId, followerUserId), eq(follows.followedUserId, followedUserId)));
+  return { following: false } as const;
 }

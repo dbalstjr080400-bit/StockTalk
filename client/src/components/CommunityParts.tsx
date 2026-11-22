@@ -31,7 +31,7 @@ export function WatchStar({ active, onClick, name }: { active: boolean; onClick:
 
 function postTags(content: string) { return [...new Set(content.match(/#[^\s#]+/g) ?? [])].slice(0, 8); }
 
-export function PostCard({ post, stock, onLike, onComments, onStock, currentAuthor, onEdit, onDelete, onReport }: { post: Post; stock?: Stock; onLike: () => void; onComments: () => void; onStock: () => void; currentAuthor?: string; onEdit?: () => void; onDelete?: () => void; onReport?: () => void }) {
+export function PostCard({ post, stock, onLike, onComments, onStock, currentAuthor, onEdit, onDelete, onReport, onAuthorClick }: { post: Post; stock?: Stock; onLike: () => void; onComments: () => void; onStock: () => void; currentAuthor?: string; onEdit?: () => void; onDelete?: () => void; onReport?: () => void; onAuthorClick?: (author: string) => void }) {
   stock = stock ?? stockFor(post.ticker);
   const [menuOpen, setMenuOpen] = useState(false);
   function share() {
@@ -53,7 +53,7 @@ export function PostCard({ post, stock, onLike, onComments, onStock, currentAuth
       {postTags(post.content).length > 0 && <div className="post-tags" aria-label="게시글 태그">{postTags(post.content).map((tag) => <span key={tag}>{tag}</span>)}</div>}
     </button>
     <div className="post-bottom">
-      <div className="post-author"><Avatar name={post.author} /><span>{post.author}</span><i /> <span className="post-time">{relativeTime(post.createdAt)}</span></div>
+      <div className="post-author"><Avatar name={post.author} />{onAuthorClick ? <button className="author-profile-link" onClick={(event) => { event.stopPropagation(); onAuthorClick(post.author); }}>{post.author}</button> : <span>{post.author}</span>}<i /> <span className="post-time">{relativeTime(post.createdAt)}</span></div>
       <div className="post-actions">
         <span className="post-views">조회 {post.views}</span>
         <button className={post.liked ? 'liked' : ''} onClick={onLike} aria-label={post.liked ? '공감 취소' : '공감하기'}><Heart size={16} fill={post.liked ? 'currentColor' : 'none'} /><span>{post.likes}</span></button>
