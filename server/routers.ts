@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { limitedDiscussionWrite } from "./_core/discussionRateLimit";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
 import { getStockDirectory } from "./stocks";
 import { isMarketIndex } from "@shared/marketIndices";
 import {
@@ -18,6 +18,7 @@ import {
   incrementDiscussionViews,
   listDiscussionPosts,
   reportDiscussionPost,
+  setUserRole,
   setUserSuspended,
   toggleDiscussionLike,
   updateDiscussionComment,
@@ -46,9 +47,10 @@ export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   admin: router({
-    snapshot: adminProcedure.query(() => getAdminSnapshot()),
+    snapshot: staffProcedure.query(() => getAdminSnapshot()),
     deletePost: adminProcedure.input(z.object({ postId })).mutation(({ input }) => adminDeleteDiscussionPost(input.postId)),
     setSuspended: adminProcedure.input(z.object({ userId: postId, suspended: z.boolean() })).mutation(({ input }) => setUserSuspended(input.userId, input.suspended)),
+    setRole: adminProcedure.input(z.object({ userId: postId, role: z.enum(["user", "staff"]) })).mutation(({ input }) => setUserRole(input.userId, input.role)),
   }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -110,7 +112,7 @@ export const appRouter = router({
       .query(({ input }) => getDiscussionComments(input.postId)),
     addComment: limitedDiscussionWrite
       .input(
-        z.object({ postId, author: singleLine(40), content: plainText(1000) })
+        z.object({ postId, parentCommentId: postId.optional(), author: singleLine(40), content: plainText(1000) })
       )
       .mutation(({ input }) => addDiscussionComment(input)),
     updateComment: limitedDiscussionWrite

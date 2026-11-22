@@ -222,7 +222,11 @@ export async function setUserSuspended(userId: number, suspended: boolean) {
   await db.update(users).set({ isSuspended: suspended }).where(eq(users.id, userId));
   return { success: true } as const;
 }
-
+export async function setUserRole(userId: number, role: "user" | "staff") {
+  const db = await requireDb();
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+  return { success: true } as const;
+}
 export async function incrementDiscussionViews(postId: number) {
   const db = await requireDb();
   const result = await db
@@ -296,6 +300,7 @@ export async function getDiscussionComments(postId: number) {
     .select({
       id: discussionComments.id,
       postId: discussionComments.postId,
+      parentCommentId: discussionComments.parentCommentId,
       author: discussionComments.author,
       content: discussionComments.content,
       createdAt: discussionComments.createdAt,
@@ -308,6 +313,7 @@ export async function getDiscussionComments(postId: number) {
 
 export async function addDiscussionComment(input: {
   postId: number;
+  parentCommentId?: number;
   author: string;
   content: string;
 }) {
@@ -322,6 +328,16 @@ export async function addDiscussionComment(input: {
       code: "NOT_FOUND",
       message: "게시글을 찾을 수 없습니다.",
     });
+  }
+  if (input.parentCommentId) {
+    const [parent] = await db
+      .select({ id: discussionComments.id, postId: discussionComments.postId })
+      .from(discussionComments)
+      .where(eq(discussionComments.id, input.parentCommentId))
+      .limit(1);
+    if (!parent || parent.postId !== input.postId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "답글을 달 댓글을 찾을 수 없습니다." });
+    }
   }
   await db.insert(discussionComments).values(input);
   return { success: true } as const;
