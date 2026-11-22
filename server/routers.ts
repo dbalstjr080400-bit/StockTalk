@@ -18,6 +18,7 @@ import {
   incrementDiscussionViews,
   getFollowStatus,
   getPublicProfileByNickname,
+  searchUserNicknames,
   followUser,
   unfollowUser,
   listNotifications,
@@ -78,6 +79,7 @@ export const appRouter = router({
   }),
   profile: router({
     byNickname: publicProcedure.input(z.object({ nickname: singleLine(40) })).query(({ input }) => getPublicProfileByNickname(input.nickname)),
+    search: publicProcedure.input(z.object({ query: z.string().max(40) })).query(({ input }) => searchUserNicknames(input.query)),
   }),
   follows: router({
     status: protectedProcedure.input(z.object({ userId: postId })).query(({ ctx, input }) => getFollowStatus(ctx.user.id, input.userId)),

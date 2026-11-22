@@ -61,9 +61,11 @@ export function EditPostDialog({ post, onClose, onSubmit, pending }: { post: Pos
 
 export function ThreadDialog({ post, stock, currentAuthor, onClose, onChanged, canManage, onEdit, onDelete, onShare, onAuthorClick }: { post: Post; stock?: Stock; currentAuthor?: string; onClose: () => void; onChanged: () => void; canManage: boolean; onEdit: () => void; onDelete: () => void; onShare: () => void; onAuthorClick?: (author: string) => void }) {
   const [content, setContent] = useState('');
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [openCommentMenu, setOpenCommentMenu] = useState<number | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: number; author: string } | null>(null);
   const comments = trpc.discussion.comments.useQuery({ postId: post.id }, { refetchInterval: 30_000 });
+  const mentionCandidates = trpc.profile.search.useQuery({ query: mentionQuery ?? '' }, { enabled: mentionQuery !== null, staleTime: 30_000 });
   const addComment = trpc.discussion.addComment.useMutation({
     onSuccess: () => { setContent(''); setReplyTo(null); void comments.refetch(); onChanged(); toast.success(replyTo ? '대댓글을 남겼어요.' : '댓글을 남겼어요.'); },
     onError: () => toast.error('댓글을 등록하지 못했어요. 다시 시도해 주세요.'),
@@ -75,6 +77,18 @@ export function ThreadDialog({ post, stock, currentAuthor, onClose, onChanged, c
     event.preventDefault();
     if (!currentAuthor?.trim() || !content.trim()) return;
     addComment.mutate({ postId: post.id, parentCommentId: replyTo?.id, author: currentAuthor.trim(), content: content.trim() });
+  }
+  function handleContentChange(value: string) {
+    setContent(value);
+    const match = value.match(/(?:^|\s)@([^\s@]*)$/u);
+    setMentionQuery(match ? match[1] : null);
+  }
+  function chooseMention(nickname: string) {
+    const match = content.match(/(?:^|\s)@([^\s@]*)$/u);
+    if (!match) return;
+    const start = content.length - match[0].length + (match[0].startsWith(' ') ? 1 : 0);
+    setContent(`${content.slice(0, start)}@${nickname} `);
+    setMentionQuery(null);
   }
   function renderComment(comment: NonNullable<typeof comments.data>[number], depth = 0): ReactNode {
     const children = (comments.data ?? []).filter((item) => item.parentCommentId === comment.id);
@@ -92,6 +106,6 @@ export function ThreadDialog({ post, stock, currentAuthor, onClose, onChanged, c
       : comments.data?.length ? <div className="comment-list">{(comments.data ?? []).filter((comment) => !comment.parentCommentId).map((comment) => renderComment(comment))}</div> : <div className="empty-comments">아직 댓글이 없어요. 첫 번째 생각을 나눠보세요.</div>}
     </div>
     {replyTo && <div className="replying-to"><span>{replyTo.author}님에게 답글 작성 중</span><button type="button" onClick={() => setReplyTo(null)}>취소</button></div>}
-    <form className="comment-form" onSubmit={submit}><div><input aria-label="댓글" required maxLength={1000} value={content} onChange={(e) => setContent(e.target.value)} placeholder={currentAuthor ? "따뜻한 의견을 남겨주세요" : "로그인 후 닉네임을 설정해 주세요"} /><button disabled={addComment.isPending || !currentAuthor} aria-label="댓글 등록"><Send size={18} /></button></div></form>
+    <form className="comment-form" onSubmit={submit}><div className="comment-input-wrap"><input aria-label="댓글" required maxLength={1000} value={content} onChange={(e) => handleContentChange(e.target.value)} placeholder={currentAuthor ? "따뜻한 의견을 남겨주세요 · @로 닉네임 태그" : "로그인 후 닉네임을 설정해 주세요"} /><button disabled={addComment.isPending || !currentAuthor} aria-label="댓글 등록"><Send size={18} /></button>{mentionQuery !== null && mentionCandidates.data?.length ? <div className="mention-suggestions" role="listbox">{mentionCandidates.data.map(candidate => <button type="button" key={candidate.id} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseMention(candidate.nickname || "")}><Avatar name={candidate.nickname || ""} /><span>@{candidate.nickname}</span></button>)}</div> : null}</div></form>
   </Modal>;
 }

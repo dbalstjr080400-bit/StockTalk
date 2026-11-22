@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   discussionComments,
@@ -441,4 +441,15 @@ export async function unfollowUser(followerUserId: number, followedUserId: numbe
   const db = await requireDb();
   await db.delete(follows).where(and(eq(follows.followerUserId, followerUserId), eq(follows.followedUserId, followedUserId)));
   return { following: false } as const;
+}
+
+
+export async function searchUserNicknames(query: string) {
+  const db = await requireDb();
+  const normalized = query.trim().slice(0, 40);
+  return db.select({ id: users.id, nickname: users.profileNickname })
+    .from(users)
+    .where(normalized ? like(users.profileNickname, `%${normalized}%`) : sql`${users.profileNickname} is not null`)
+    .orderBy(users.profileNickname)
+    .limit(20);
 }
