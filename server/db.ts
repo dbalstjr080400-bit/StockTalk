@@ -398,7 +398,7 @@ export async function addDiscussionComment(input: {
 }) {
   const db = await requireDb();
   const [post] = await db
-    .select({ id: discussionPosts.id })
+    .select({ id: discussionPosts.id, authorUserId: discussionPosts.authorUserId, title: discussionPosts.title })
     .from(discussionPosts)
     .where(eq(discussionPosts.id, input.postId))
     .limit(1);
@@ -410,7 +410,7 @@ export async function addDiscussionComment(input: {
   }
   if (input.parentCommentId) {
     const [parent] = await db
-      .select({ id: discussionComments.id, postId: discussionComments.postId })
+      .select({ id: discussionComments.id, postId: discussionComments.postId, authorUserId: discussionComments.authorUserId })
       .from(discussionComments)
       .where(eq(discussionComments.id, input.parentCommentId))
       .limit(1);
@@ -420,13 +420,25 @@ export async function addDiscussionComment(input: {
   }
   const [created] = await db.insert(discussionComments).values(input).$returningId();
   if (input.authorUserId) {
+    const recipients = new Map<number, { type: 'comment' | 'mention'; message: string }>();
+    if (post.authorUserId && post.authorUserId !== input.authorUserId) {
+      recipients.set(post.authorUserId, { type: 'comment', message: `회원님의 게시글에 댓글을 남겼습니다: ${post.title}` });
+    }
+    if (input.parentCommentId) {
+      const [parent] = await db.select({ authorUserId: discussionComments.authorUserId }).from(discussionComments).where(eq(discussionComments.id, input.parentCommentId)).limit(1);
+      if (parent?.authorUserId && parent.authorUserId !== input.authorUserId) {
+        recipients.set(parent.authorUserId, { type: 'comment', message: `${input.author}님이 회원님의 댓글에 답글을 남겼습니다.` });
+      }
+    }
     const taggedNicknames = [...input.content.matchAll(/@[\p{L}\p{N}_-]{1,40}/gu)].map(match => match[0].slice(1));
     const uniqueNicknames = [...new Set(taggedNicknames)];
     if (uniqueNicknames.length) {
       const taggedUsers = await db.select({ id: users.id, profileNickname: users.profileNickname }).from(users).where(inArray(users.profileNickname, uniqueNicknames));
-      const recipients = taggedUsers.filter(user => user.id !== input.authorUserId && user.profileNickname);
-      if (recipients.length) await db.insert(notifications).values(recipients.map(user => ({ recipientUserId: user.id, actorUserId: input.authorUserId, type: "mention" as const, postId: input.postId, commentId: created.id, message: `${input.author}님이 댓글에서 회원님을 언급했습니다.` })));
+      for (const user of taggedUsers) {
+        if (user.id !== input.authorUserId && user.profileNickname) recipients.set(user.id, { type: 'mention', message: `${input.author}님이 댓글에서 회원님을 언급했습니다.` });
+      }
     }
+    if (recipients.size) await db.insert(notifications).values([...recipients].map(([recipientUserId, notification]) => ({ recipientUserId, actorUserId: input.authorUserId, type: notification.type, postId: input.postId, commentId: created.id, message: notification.message })));
   }
   return { success: true } as const;
 }
