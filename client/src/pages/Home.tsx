@@ -12,6 +12,7 @@ import { StockExplorer } from '@/components/StockExplorer';
 import StockDetail from '@/components/StockDetail';
 import { IndexSection, NewsSection } from '@/components/MarketSections';
 import { AdminPanel } from '@/components/AdminPanel';
+import { AuthDialog } from '@/components/AuthDialog';
 import { MARKET_INDICES, isMarketIndex } from '@shared/marketIndices';
 
 type Section = 'feed' | 'hot' | 'watch' | 'stocks' | 'news' | 'indices' | 'profit' | 'free' | 'me' | 'admin';
@@ -49,6 +50,7 @@ export default function Home() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [selectedIndexTicker, setSelectedIndexTicker] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const nicknamePromptedFor = useRef<number | null>(null);
   useEffect(() => {
@@ -142,7 +144,8 @@ export default function Home() {
   function deletePost(post: Post) { if (window.confirm('이 게시글을 삭제할까요? 삭제하면 복구할 수 없습니다.')) removePost.mutate({ postId: post.id, author: post.author }); }
   function editPost(post: Post) { setEditingPost(post); setThread(null); }
   function reportPostFromMenu(post: Post) { const reason = window.prompt('신고 사유를 입력해 주세요.', '주식과 관련 없는 내용'); if (reason?.trim()) reportPost.mutate({ postId: post.id, reporter: currentUserName || '익명', reason: reason.trim() }); }
-  function login() { try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
+  function login() { setLoginOpen(true); }
+  function beginLogin() { setLoginOpen(false); try { startLogin(); } catch { toast.error('로그인을 시작할 수 없어요. 로그인 설정을 확인해 주세요.'); } }
   async function logout() { try { await auth.logout(); toast.success('로그아웃했어요.'); } catch { toast.error('로그아웃하지 못했어요. 다시 시도해 주세요.'); } }
   function resolveStock(id: string) {
     return stockIndex.get(id) ?? stockFor(id) ?? stockFromDirectory({ symbol: id, name: posts.data?.find((post) => post.ticker === id)?.stockName ?? id, market: '', type: '' });
@@ -230,5 +233,6 @@ export default function Home() {
     {compose && <ComposeDialog initialStock={composeStock} initialCategory={selectedIndex ? '주요지수' : section === 'free' ? '자유게시판' : '종목토론'} stocks={selectedIndex ? [...indexStocks, ...searchCatalog] : searchCatalog} popular={selectedIndex ? [composeStock!, ...popularStocks] : popularStocks} loading={directory.loading} error={directory.error} retry={directory.retry} nickname={currentUserName} onClose={() => setCompose(false)} pending={create.isPending} onSubmit={(draft) => create.mutate(draft)} hideBoardSelector={Boolean(selectedIndex)} />}
     {currentThread && <ThreadDialog post={currentThread} stock={resolveStock(currentThread.ticker)} currentAuthor={currentUserName} onClose={() => setThread(null)} onChanged={() => void posts.refetch()} canManage={Boolean(currentUserName && currentThread.author === currentUserName)} onEdit={() => { setEditingPost(currentThread); setThread(null); }} onDelete={() => deletePost(currentThread)} onShare={() => sharePost(currentThread)} />}
     {editingPost && <EditPostDialog post={editingPost} onClose={() => setEditingPost(null)} pending={updatePost.isPending} onSubmit={(title, content) => updatePost.mutate({ postId: editingPost.id, author: editingPost.author, title, content })} />}
+    {loginOpen && <AuthDialog onClose={() => setLoginOpen(false)} onLogin={beginLogin} />}
   </div>;
 }
